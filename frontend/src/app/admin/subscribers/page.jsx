@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Search, Crown, Zap, User } from "lucide-react";
+import { useAdminContext } from "@/context/AdminContext";
 
 export default function SubscribersPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isSuperAdmin } = useAdminContext();
   const [token, setToken] = useState(null);
   const [subscribers, setSubscribers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,6 +33,13 @@ export default function SubscribersPage() {
     if (!t) { router.push("/adminlogin"); return; }
     setToken(t);
   }, [router]);
+
+  // Role guard - subscribers is super_admin only
+  useEffect(() => {
+    if (isSuperAdmin === false) {
+      router.replace("/admin/403");
+    }
+  }, [isSuperAdmin, router]);
 
   const fetchSubscribers = useCallback(async () => {
     if (!token) return;

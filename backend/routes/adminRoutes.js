@@ -22,6 +22,11 @@ const {
     getSubscribers,
     getRevenueAnalytics,
     exportUsers,
+    listAdmins,
+    createAdminAccount,
+    updateAdminAccount,
+    deleteAdminAccount,
+    getAuditLogs,
 } = require('../controllers/adminController');
 
 const {
@@ -32,7 +37,7 @@ const {
 } = require('../controllers/notificationController');
 
 const { getAllContactUsForAdmin } = require('../controllers/contactController');
-const { adminProtect } = require('../middlewares/authMiddleware');
+const { adminProtect, requireSuperAdmin } = require('../middlewares/authMiddleware');
 const { adminLogin, adminRegister, checkAdminTokenStatus } = require('../controllers/adminAuthController');
 
 const upload = multer({ storage: multer.memoryStorage() });
@@ -42,50 +47,59 @@ router.post('/register', adminRegister);
 router.post('/login', adminLogin);
 router.get('/token-status', checkAdminTokenStatus);
 
-// ===================== NOTIFICATIONS =====================
+// ===================== NOTIFICATIONS (both roles) =====================
 router.get('/notifications', adminProtect, getAdminNotifications);
 router.put('/notifications/mark-all-read', adminProtect, markAllAdminNotificationsAsRead);
 router.put('/notifications/:id/read', adminProtect, markAdminNotificationAsRead);
 router.delete('/notifications/:id', adminProtect, deleteAdminNotification);
 
-// ===================== STATS & ANALYTICS =====================
+// ===================== STATS (both roles) =====================
 router.get('/stats', adminProtect, getAdminStats);
-router.get('/revenue', adminProtect, getRevenueAnalytics);
 
-// ===================== EXPORT =====================
-router.get('/export/users', adminProtect, exportUsers);
+// ===================== REVENUE & EXPORT (super_admin only) =====================
+router.get('/revenue', adminProtect, requireSuperAdmin, getRevenueAnalytics);
+router.get('/export/users', adminProtect, requireSuperAdmin, exportUsers);
 
-// ===================== USER MANAGEMENT =====================
+// ===================== USER MANAGEMENT (both roles) =====================
 router.get('/users', adminProtect, getAllUsers);
 
-// IMPORTANT: specific routes MUST come before parameterized routes
+// Specific routes BEFORE parameterized routes
 router.post('/users/manual', adminProtect, createUserManually);
 router.post('/users/bulk-upload', adminProtect, upload.single('file'), bulkCreateUsersFromExcel);
 router.put('/users/:id/account-status', adminProtect, updateUserAccountStatus);
 
-// user-details: specific path before parameterized
+// user-details: specific before parameterized
 router.get('/user-details/profile/:profileId', adminProtect, getUserDetailsByProfileId);
 router.get('/user-details/:id', adminProtect, getUserDetailsById);
 
-// ===================== PROFILE VERIFICATION =====================
+// ===================== PROFILE VERIFICATION (both roles) =====================
 router.get('/pending-verification', adminProtect, getPendingVerification);
 router.put('/verify-profile/:profileId', adminProtect, verifyUserProfile);
 
-// ===================== SUCCESSFUL MATCHES =====================
+// ===================== SUCCESSFUL MATCHES (both roles) =====================
 router.get('/matches', adminProtect, getSuccessfulMatches);
 router.post('/matches', adminProtect, createSuccessfulMatch);
 router.put('/matches/:id', adminProtect, updateSuccessfulMatch);
 router.delete('/matches/:id', adminProtect, deleteSuccessfulMatch);
 
-// ===================== REPORTED PROFILES =====================
+// ===================== REPORTED PROFILES (both roles) =====================
 router.get('/reported-profiles', adminProtect, getReportedProfiles);
 router.post('/reported-profiles', adminProtect, createReportedProfile);
 router.put('/reported-profiles/:id', adminProtect, updateReportedProfile);
 
-// ===================== SUBSCRIBERS =====================
-router.get('/subscribers', adminProtect, getSubscribers);
+// ===================== SUBSCRIBERS (super_admin only) =====================
+router.get('/subscribers', adminProtect, requireSuperAdmin, getSubscribers);
 
-// ===================== CONTACT US =====================
+// ===================== CONTACT US (both roles) =====================
 router.get('/contact-us', adminProtect, getAllContactUsForAdmin);
+
+// ===================== ADMIN MANAGEMENT (super_admin only) =====================
+router.get('/admins', adminProtect, requireSuperAdmin, listAdmins);
+router.post('/admins', adminProtect, requireSuperAdmin, createAdminAccount);
+router.put('/admins/:id', adminProtect, requireSuperAdmin, updateAdminAccount);
+router.delete('/admins/:id', adminProtect, requireSuperAdmin, deleteAdminAccount);
+
+// ===================== AUDIT LOGS (super_admin only) =====================
+router.get('/audit-logs', adminProtect, requireSuperAdmin, getAuditLogs);
 
 module.exports = router;

@@ -38,6 +38,8 @@ export default function AdminLogin() {
       if (!res.ok) throw new Error(data.message || "Login failed");
 
       localStorage.setItem("adminToken", data.token);
+      localStorage.setItem("adminRole", data.admin?.role || "admin");
+      localStorage.setItem("adminName", data.admin?.name || "");
       router.push("/admin"); // admin dashboard  redirect
     } catch (err) {
       toast.error(err.message);

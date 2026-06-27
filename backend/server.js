@@ -65,7 +65,7 @@ async function seedAdmin() {
         name: 'Super Admin',
         email: adminEmail,
         password: hashedPassword,
-        role: 'admin',
+        role: 'super_admin',
       });
       console.log(`Admin seeded: ${adminEmail}`);
     }

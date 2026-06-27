@@ -50,17 +50,17 @@ exports.adminLogin = async (req, res) => {
             return res.status(401).json({ success: false, message: "Invalid Admin Credentials" });
         }
 
-        // 3. Generate Token with Admin Role
+        // 3. Generate Token with actual Admin Role
         const token = jwt.sign(
-            { id: admin._id, role: 'admin' }, 
-            process.env.JWT_SECRET, 
+            { id: admin._id, role: admin.role },
+            process.env.JWT_SECRET,
             { expiresIn: '1d' }
         );
 
         res.status(200).json({
             success: true,
             token,
-            admin: { id: admin._id, name: admin.name, role: 'admin' }
+            admin: { id: admin._id, name: admin.name, email: admin.email, role: admin.role }
         });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -87,7 +87,7 @@ exports.checkAdminTokenStatus = async (req, res) => {
         try {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-            if (decoded.role !== 'admin') {
+            if (!['admin', 'super_admin'].includes(decoded.role)) {
                 return res.status(200).json({
                     success: true,
                     valid: false,
@@ -96,7 +96,7 @@ exports.checkAdminTokenStatus = async (req, res) => {
                 });
             }
 
-            const admin = await Admin.findById(decoded.id).select('_id role');
+            const admin = await Admin.findById(decoded.id).select('_id role name');
             if (!admin) {
                 return res.status(200).json({
                     success: true,
@@ -111,6 +111,7 @@ exports.checkAdminTokenStatus = async (req, res) => {
                 valid: true,
                 expired: false,
                 adminId: admin._id,
+                adminName: admin.name || '',
                 role: admin.role || 'admin',
                 expiresAt: decoded.exp ? new Date(decoded.exp * 1000) : null
             });

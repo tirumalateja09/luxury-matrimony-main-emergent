@@ -5,6 +5,9 @@ const User = require('../models/User');
 const ProfileBoost = require('../models/ProfileBoost');
 const SuccessfulMatch = require('../models/SuccessfulMatch');
 const ReportedProfile = require('../models/ReportedProfile');
+const Admin = require('../models/Admin');
+const AuditLog = require('../models/AuditLog');
+const bcrypt = require('bcryptjs');
 const XLSX = require('xlsx');
 
 const allowedProfileFieldsForAdminCreate = [
@@ -114,6 +117,27 @@ const createUserAndProfileByAdmin = async (payload = {}) => {
 };
 
 // ===================== VERIFY PROFILE =====================
+// Helper: create audit log entry
+const createAuditLog = async ({ req, action, targetType, targetId, targetName, changedFields, previousValues, newValues, notes }) => {
+    try {
+        await AuditLog.create({
+            adminId: req.user._id,
+            adminEmail: req.user.email || '',
+            adminRole: req.user.role || '',
+            action,
+            targetType: targetType || '',
+            targetId: String(targetId || ''),
+            targetName: targetName || '',
+            changedFields: changedFields || {},
+            previousValues: previousValues || {},
+            newValues: newValues || {},
+            ipAddress: req.ip || req.headers['x-forwarded-for'] || '',
+            notes: notes || '',
+        });
+    } catch (e) {
+        console.error('Audit log error:', e.message);
+    }
+};
 exports.verifyUserProfile = async (req, res) => {
     try {
         const { profileId } = req.params;
@@ -135,6 +159,20 @@ exports.verifyUserProfile = async (req, res) => {
                 ? 'Congratulations! Your profile is now live.'
                 : `Your profile was rejected. Reason: ${remarks}`
         });
+
+        // Audit log
+        await createAuditLog({
+            req,
+            action: 'verify_profile',
+            targetType: 'Profile',
+            targetId: profileId,
+            targetName: profile.fullName || '',
+            changedFields: { adminStatus: true, adminRemarks: true },
+            previousValues: { adminStatus: profile.adminStatus },
+            newValues: { adminStatus: status, adminRemarks: remarks || '' },
+            notes: `Profile ${status} by admin`
+        });
+
         res.status(200).json({ success: true, message: `Profile has been ${status} successfully`, data: profile });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -393,6 +431,20 @@ exports.updateUserAccountStatus = async (req, res) => {
         }
         const user = await User.findByIdAndUpdate(id, { accountStatus }, { new: true, runValidators: true }).select('-otp -otpExpires -lastOtpSentAt');
         if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+        // Audit log
+        await createAuditLog({
+            req,
+            action: 'update_account_status',
+            targetType: 'User',
+            targetId: id,
+            targetName: user.email || user.phone || '',
+            changedFields: { accountStatus: true },
+            previousValues: { accountStatus: user.accountStatus },
+            newValues: { accountStatus },
+            notes: `Account status changed to ${accountStatus}`
+        });
+
         return res.status(200).json({ success: true, message: 'User account status updated successfully', data: user });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
@@ -713,6 +765,140 @@ exports.exportUsers = async (req, res) => {
         }
 
         return res.status(400).json({ success: false, message: 'Invalid format. Use csv, xlsx, or pdf' });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// ===================== ADMIN MANAGEMENT (Super Admin Only) =====================
+exports.listAdmins = async (req, res) => {
+    try {
+        const admins = await Admin.find({}).select('-password').sort({ createdAt: -1 });
+        return res.status(200).json({ success: true, count: admins.length, data: admins });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+exports.createAdminAccount = async (req, res) => {
+    try {
+        const { name, email, password, role } = req.body;
+        if (!name || !email || !password) {
+            return res.status(400).json({ success: false, message: 'Name, email and password are required' });
+        }
+        const existing = await Admin.findOne({ email: email.trim().toLowerCase() });
+        if (existing) {
+            return res.status(409).json({ success: false, message: 'Admin already exists with this email' });
+        }
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+        const allowedRole = ['admin', 'super_admin'].includes(role) ? role : 'admin';
+        const newAdmin = await Admin.create({
+            name: name.trim(),
+            email: email.trim().toLowerCase(),
+            password: hashedPassword,
+            role: allowedRole,
+        });
+        await createAuditLog({
+            req,
+            action: 'create_admin',
+            targetType: 'Admin',
+            targetId: newAdmin._id,
+            targetName: newAdmin.email,
+            newValues: { name: newAdmin.name, email: newAdmin.email, role: newAdmin.role },
+            notes: `New admin account created`
+        });
+        return res.status(201).json({
+            success: true,
+            message: 'Admin created successfully',
+            data: { id: newAdmin._id, name: newAdmin.name, email: newAdmin.email, role: newAdmin.role, createdAt: newAdmin.createdAt }
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+exports.updateAdminAccount = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, role, password } = req.body;
+
+        // Prevent super admin from demoting themselves
+        if (req.user._id.toString() === id && role && role !== 'super_admin') {
+            return res.status(400).json({ success: false, message: 'You cannot change your own role.' });
+        }
+
+        const adminToUpdate = await Admin.findById(id);
+        if (!adminToUpdate) return res.status(404).json({ success: false, message: 'Admin not found' });
+
+        const previousValues = { name: adminToUpdate.name, role: adminToUpdate.role };
+        const updateData = {};
+        if (name) updateData.name = name.trim();
+        if (role && ['admin', 'super_admin'].includes(role)) updateData.role = role;
+        if (password) {
+            const salt = await bcrypt.genSalt(10);
+            updateData.password = await bcrypt.hash(password, salt);
+        }
+
+        const updated = await Admin.findByIdAndUpdate(id, updateData, { new: true }).select('-password');
+        await createAuditLog({
+            req,
+            action: 'update_admin',
+            targetType: 'Admin',
+            targetId: id,
+            targetName: updated.email,
+            previousValues,
+            newValues: { name: updated.name, role: updated.role },
+            notes: `Admin account updated`
+        });
+        return res.status(200).json({ success: true, message: 'Admin updated', data: updated });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+exports.deleteAdminAccount = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (req.user._id.toString() === id) {
+            return res.status(400).json({ success: false, message: 'You cannot delete your own account.' });
+        }
+        const admin = await Admin.findByIdAndDelete(id);
+        if (!admin) return res.status(404).json({ success: false, message: 'Admin not found' });
+        await createAuditLog({
+            req,
+            action: 'delete_admin',
+            targetType: 'Admin',
+            targetId: id,
+            targetName: admin.email,
+            previousValues: { name: admin.name, email: admin.email, role: admin.role },
+            notes: `Admin account deleted`
+        });
+        return res.status(200).json({ success: true, message: 'Admin deleted successfully' });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// ===================== AUDIT LOGS =====================
+exports.getAuditLogs = async (req, res) => {
+    try {
+        const page  = parseInt(req.query.page)  || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const skip  = (page - 1) * limit;
+        const query = {};
+        if (req.query.adminId) query.adminId = req.query.adminId;
+        if (req.query.action)  query.action  = req.query.action;
+        const logs  = await AuditLog.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit);
+        const total = await AuditLog.countDocuments(query);
+        return res.status(200).json({
+            success: true,
+            count: logs.length,
+            total,
+            totalPages: Math.max(1, Math.ceil(total / limit)),
+            currentPage: page,
+            data: logs
+        });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
     }

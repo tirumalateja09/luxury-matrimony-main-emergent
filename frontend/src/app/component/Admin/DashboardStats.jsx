@@ -87,33 +87,41 @@ const SectionTitle = ({ children, icon: Icon }) => (
   </div>
 );
 
-export default function DashboardStats({ token, onUnauthorized, onNavigate }) {
+export default function DashboardStats({ token, onUnauthorized, onNavigate, role = 'admin' }) {
   const [stats, setStats] = useState(null);
   const [revenueData, setRevenueData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const isSuperAdmin = role === 'super_admin';
 
   const fetchData = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     try {
-      const [statsRes, revenueRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/stats`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/revenue`, { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
+      // Always fetch stats
+      const statsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/stats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       if (statsRes.status === 401 || statsRes.status === 403) {
         onUnauthorized?.();
         return;
       }
       const statsData = await statsRes.json().catch(() => ({}));
-      const revData = await revenueRes.json().catch(() => ({}));
       if (statsData?.success) setStats(statsData.data);
-      if (revData?.success) setRevenueData(revData.data);
+
+      // Only fetch revenue for super_admin
+      if (isSuperAdmin) {
+        const revenueRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/revenue`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const revData = await revenueRes.json().catch(() => ({}));
+        if (revData?.success) setRevenueData(revData.data);
+      }
     } catch (e) {
       console.error("Dashboard fetch error:", e);
     } finally {
       setLoading(false);
     }
-  }, [token, onUnauthorized]);
+  }, [token, onUnauthorized, isSuperAdmin]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -195,12 +203,14 @@ export default function DashboardStats({ token, onUnauthorized, onNavigate }) {
           onClick={() => onNavigate?.("users", { sort: "today" })}
           subtitle="New signups today"
         />
-        <StatCard
-          icon={IndianRupee} label="Total Revenue" value={formatCurrency(stats.totalRevenue)}
-          accent="from-[#E7E3FA] to-[#BFB0F5]"
-          onClick={() => onNavigate?.("revenue")}
-          subtitle="All time revenue"
-        />
+        {isSuperAdmin && (
+          <StatCard
+            icon={IndianRupee} label="Total Revenue" value={formatCurrency(stats.totalRevenue)}
+            accent="from-[#E7E3FA] to-[#BFB0F5]"
+            onClick={() => onNavigate?.("revenue")}
+            subtitle="All time revenue"
+          />
+        )}
         <StatCard
           icon={Heart} label="Successful Matches" value={formatNumber(stats.successfulMatches)}
           accent="from-[#FCE7F3] to-[#F9A8D4]"
@@ -303,7 +313,8 @@ export default function DashboardStats({ token, onUnauthorized, onNavigate }) {
         </div>
       </div>
 
-      {/* Row 4: Revenue Analytics */}
+      {/* Row 4: Revenue Analytics — Super Admin Only */}
+      {isSuperAdmin && (
       <div className="rounded-2xl border border-[#F2E9DE] bg-white p-6 shadow-sm" data-testid="revenue-analytics-section">
         <div className="flex items-center justify-between mb-4">
           <SectionTitle icon={TrendingUp}>Revenue Analytics</SectionTitle>
@@ -373,6 +384,7 @@ export default function DashboardStats({ token, onUnauthorized, onNavigate }) {
           </div>
         </div>
       </div>
+      )} {/* end isSuperAdmin revenue section */}
     </div>
   );
 }

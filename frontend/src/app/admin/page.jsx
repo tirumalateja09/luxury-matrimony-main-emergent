@@ -18,6 +18,7 @@ import {
 import Image from "next/image";
 import DashboardStats from "@/app/component/Admin/DashboardStats";
 import CustomSelect from "@/app/component/Register/CustomSelect";
+import { useAdminContext } from "@/context/AdminContext";
 
 const ACCOUNT_STATUS_OPTIONS = ["pending", "active", "suspended", "deleted"];
 const ADMIN_STATUS_OPTIONS = ["pending", "approved", "rejected"];
@@ -39,6 +40,7 @@ export default function AdminDashboard() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { adminRole, adminName, isSuperAdmin } = useAdminContext();
   const initialSearchParam = searchParams.get("search") || "";
   const initialPageParam = Number(searchParams.get("page") || "1");
   const initialStatusParam = searchParams.get("status") || "";
@@ -308,7 +310,7 @@ export default function AdminDashboard() {
               Admin Dashboard
             </h1>
             <p className="text-gray-500">
-              Review and manage your platform
+              {adminName ? `Welcome back, ${adminName}` : "Review and manage your platform"}
             </p>
           </div>
         </div>
@@ -397,7 +399,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Enhanced Dashboard Stats */}
-      <DashboardStats token={token} onUnauthorized={handleUnauthorized} onNavigate={handleDashboardNavigate} />
+      <DashboardStats token={token} onUnauthorized={handleUnauthorized} onNavigate={handleDashboardNavigate} role={adminRole} />
 
       {/* Users Table */}
       <div className="rounded-2xl border border-[#F2E9DE] bg-white p-6 shadow-sm" data-testid="users-table-section">

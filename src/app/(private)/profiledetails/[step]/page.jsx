@@ -206,7 +206,7 @@ export default function RegisterStepPage() {
     } else if (stepNumber === 4) {
       const { highestEducation, degree, profession, currency, incomeRange } = currentData;
       if (!highestEducation || !degree || !profession || !currency || !incomeRange) {
-      
+
         toast.error("Please fill all mandatory fields.");
         return;
       }
@@ -233,7 +233,7 @@ export default function RegisterStepPage() {
           ...mainProfileData,
         };
 
-      
+
 
         const response = await api.put("/profile/update", payload, "private");
 
@@ -625,13 +625,65 @@ export default function RegisterStepPage() {
             </div>
           </div>
         </div>
+
+
+        {/* ── Symmetrical Luxury Background Ornaments ── */}
+
+        {/* Top Left Circular Mandala */}
         <Image
-          src={"/Login/illustration1.svg"}
-          width={300}
-          height={300}
-          alt="couple"
-          className="absolute -bottom-20 right-10 z-20 pointer-events-none max-sm:hidden"
+          src="https://res.cloudinary.com/dhf0ydaoz/image/upload/v1782540999/Pngtree_luxury_golden_islamic_mandala_for_7494417_edbyhd.png"
+          alt="decoration"
+          width={280}
+          height={280}
+          className="absolute -top-20 -left-24 pointer-events-none z-10 select-none max-lg:hidden opacity-95 saturate-150 brightness-100 drop-shadow-[0_0_12px_rgba(227,180,80,0.45)]"
         />
+
+        {/* Top Right Circular Mandala */}
+        <Image
+          src="https://res.cloudinary.com/dhf0ydaoz/image/upload/v1782540999/Pngtree_luxury_golden_islamic_mandala_for_7494417_edbyhd.png"
+          alt="decoration"
+          width={280}
+          height={280}
+          className="absolute -top-20 -right-24 pointer-events-none z-10 select-none max-lg:hidden opacity-95 saturate-150 brightness-100 drop-shadow-[0_0_12px_rgba(227,180,80,0.45)]"
+        />
+
+        {/* Center Left Vertical Leaf Ornament */}
+        {/* <Image
+          src="/home/leftIllustration.svg"
+          alt="decoration"
+          width={60}
+          height={180}
+          className="absolute top-1/2 -translate-y-1/2 left-6 pointer-events-none z-10 select-none max-lg:hidden h-auto opacity-95 saturate-250 brightness-90 drop-shadow-[0_0_12px_rgba(227,180,80,0.45)]"
+        /> */}
+
+        {/* Center Right Vertical Leaf Ornament (Mirrored) */}
+        {/* <Image
+          src="/home/leftIllustration.svg"
+          alt="decoration"
+          width={60}
+          height={180}
+          className="absolute top-1/2 -translate-y-1/2 right-6 pointer-events-none z-10 select-none scale-x-[-1] max-lg:hidden h-auto opacity-95 saturate-250 brightness-90 drop-shadow-[0_0_12px_rgba(227,180,80,0.45)]"
+        /> */}
+
+        {/* Bottom Left Traditional Gold Graphic */}
+        <Image
+          src="/home/illustration2.svg"
+          alt="decoration"
+          width={220}
+          height={220}
+          className="absolute -bottom-10 -left-10 pointer-events-none z-10 select-none max-lg:hidden opacity-85 saturate-100 brightness-90 drop-shadow-[0_0_12px_rgba(227,180,80,0.45)]"
+        />
+
+        {/* Bottom Right Traditional Gold Graphic */}
+        <Image
+          src="/Login/illustration1.svg"
+          width={320}
+          height={320}
+          alt="decoration"
+          className="absolute -bottom-10 -right-10 pointer-events-none z-10 select-none max-lg:hidden opacity-85 saturate-100 brightness-90 drop-shadow-[0_0_12px_rgba(227,180,80,0.45)]"
+        />
+
+
       </div>
     </div>
   );

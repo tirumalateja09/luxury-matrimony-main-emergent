@@ -15,7 +15,7 @@ const Steps = () => {
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-10 gap-6">
         <div>
           <h1 className=" font-playfair text-[40px] font-semibold leading-tight text-[#2D2D2D]">
-            Find Your <span className="text-[#429466]">Perfect Match</span>
+            Find Your <span className="text-[#A96060]">Telugu Life Partner</span>
           </h1>
           <p className="text-[#7B6A64] font-medium text-2xl mt-2 font-inter">
             In Three Simple Steps
@@ -35,8 +35,8 @@ const Steps = () => {
           {/* Card 01: Preferences */}
           <CardWrapper
             number="01."
-            title="Share Your Partner Preferences"
-            description="Tell us what matters to you"
+            title="Define Gothram & Nakshatram"
+            description="Provide your traditional star, ancestral lineage (Gothram), and partner preferences for accurate matchmaking."
           >
             <PreferencesGraphic />
           </CardWrapper>
@@ -44,8 +44,8 @@ const Steps = () => {
           {/* Card 02: Profiles */}
           <CardWrapper
             number="02."
-            title="Explore Verified Profiles"
-            description="Browse carefully screened profiles"
+            title="Browse Screened Profiles"
+            description="Explore verified profiles of Telugu brides and grooms, filtered by education, sub-caste, and location."
           >
             <ProfilesGraphic />
           </CardWrapper>
@@ -53,8 +53,8 @@ const Steps = () => {
           {/* Card 03: Chat */}
           <CardWrapper
             number="03."
-            title="Connect with Confidence"
-            description="Send interests and chat securely"
+            title="Initiate Shubhalagnam"
+            description="Send interest requests, securely share horoscopes (Jatakam), and begin secure family conversations."
           >
             <ChatGraphic />
           </CardWrapper>
@@ -91,7 +91,7 @@ const CardWrapper = ({ number, title, description, children }) => {
     >
       <motion.h1
         layout="position"
-        className="font-serif font-bold text-3xl text-[#429466] mb-6"
+        className="font-serif font-bold text-3xl text-[#A96060] mb-6"
       >
         {number}
       </motion.h1>

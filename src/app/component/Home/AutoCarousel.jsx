@@ -22,7 +22,7 @@ const mainhomeImages = [
 const isVideoSlide = (src) =>
   typeof src === "string" && src.toLowerCase().endsWith(".mp4");
 
-export default function AutoCarousel({ mainhome, images }) {
+export default function AutoCarousel({ mainhome, images, compact }) {
   const [index, setIndex] = useState(0);
   const [playingVideo, setPlayingVideo] = useState(null);
   const videoRefs = useRef([]);
@@ -55,14 +55,16 @@ export default function AutoCarousel({ mainhome, images }) {
 
   return (
     <div
-      className={`${mainhome ? "" : "px-5 md:px-12 lg:px-24 pt-3"} bg-[#FEFCF5]`}
+      className={`${compact ? "" : mainhome ? "" : "px-5 md:px-12 lg:px-24 pt-3"} bg-transparent`}
     >
       <div
         className={`${
-          mainhome
-            ? "w-full h-[250px] sm:h-[350px] md:h-[400px] xl:max-w-[1242px] 2xl:max-w-[1400px] xl:h-[660px] 2xl:max-h-[825px]"
-            : "w-full h-[250px] sm:h-[350px] md:h-[450px] xl:max-w-[1242px] 2xl:max-w-[1400px] xl:h-[660px] 2xl:max-h-[825px]"
-        } mx-auto overflow-hidden relative rounded-[42px] isolate`}
+          compact
+            ? "w-full aspect-[16/10]"
+            : mainhome
+              ? "w-full h-[250px] sm:h-[350px] md:h-[400px] xl:max-w-[1242px] 2xl:max-w-[1400px] xl:h-[660px] 2xl:max-h-[825px]"
+              : "w-full h-[250px] sm:h-[350px] md:h-[450px] xl:max-w-[1242px] 2xl:max-w-[1400px] xl:h-[660px] 2xl:max-h-[825px]"
+        } mx-auto overflow-hidden relative rounded-3xl md:rounded-[42px] isolate`}
         style={{
           WebkitMaskImage: "-webkit-radial-gradient(white, black)",
           maskImage: "radial-gradient(white, black)",

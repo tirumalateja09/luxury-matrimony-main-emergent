@@ -1,42 +1,48 @@
 "use client";
 import React from "react";
 import Image from "next/image";
+import { motion } from "framer-motion";
 
 const WhyChooseUs = () => {
   const card_data = [
     {
       icon: "/home/cardIcon1.svg",
-      header: "Verified Profiles You Can Trust",
-      desc: "Profiles are reviewed and screened for genuine matrimonial intent.",
+      header: "Telugu Heritage & Lineage",
+      desc: "Connect seamlessly across Telugu sub-castes, Gothram, and stars with shared values.",
     },
     {
       icon: "/home/cardIcon2.svg",
-      header: "Human-Led Verification",
-      desc: "Selected profiles are personally verified by our trained team members.",
+      header: "Local & Global Screening",
+      desc: "Verified profiles from Andhra Pradesh, Telangana, and major global Telugu NRI hubs.",
     },
     {
       icon: "/home/cardIcon3.svg",
-      header: "Privacy You Control",
-      desc: "Decide who can connect with you and what they can see.",
+      header: "Jatakam & Privacy Control",
+      desc: "Share your Horoscope (Jatakam) securely and manage who sees your contact details.",
     },
   ];
 
   return (
     // Changed h-[436px] to h-auto md:h-[436px] so the red background grows on mobile
-    <div className="bg-[#A96060] h-auto md:h-[436px] px-5 md:px-12 lg:px-24 py-12 md:py-8 text-white relative">
-      
+    <div className="bg-[#A96060] h-auto md:h-[436px] px-5 md:px-12 lg:px-24 py-12 md:py-8 text-white relative overflow-hidden">
+
       {/* Headings */}
-      <div className="relative z-10 text-center md:text-left">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="relative z-10 text-center md:text-left"
+      >
         <h1 className="font-playfair font-semibold text-3xl md:text-[40px] mb-4">
           Why Choose{" "}
           <span className="bg-[linear-gradient(99.44deg,#E3B450_2.09%,#F6DC7F_40.67%,#CAA043_92.25%)] bg-clip-text text-transparent">
-            Luxury Matrimony
+            RVR Telugu Matrimony
           </span>
         </h1>
         <p className="font-inter text-base md:text-[20px] text-[#FFF6EC] font-normal">
-          Because the Right Match Deserves Care, Trust, and Respect
+          Connecting Telugu Families with Respect, Heritage, and Complete Trust
         </p>
-      </div>
+      </motion.div>
 
       {/* Decorative Image - Hidden on mobile to prevent layout issues */}
       <Image
@@ -52,11 +58,19 @@ const WhyChooseUs = () => {
       <div className="flex flex-col md:flex-row justify-between items-center gap-6 md:gap-5 py-8 md:py-8 mt-4 md:mt-0 relative z-10">
         {card_data.map((ele, ind) => {
           return (
-            <div
+            <motion.div
               key={ind}
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: ind * 0.15 }}
+              whileHover={{
+                y: -8,
+                scale: 1.02,
+                boxShadow: "0px 20px 40px rgba(0,0,0,0.15)"
+              }}
               // Width matches parent on mobile, fixed max-width on desktop
               // Height is auto on mobile to prevent text clipping
-              className="w-full md:max-w-[398px] h-auto md:h-[208px] space-y-2 p-5 bg-[#ffffff] rounded-xl shadow-[0px_4px_40px_0px_rgba(0,0,0,0.1)]"
+              className="w-full md:max-w-[398px] h-auto md:h-[208px] space-y-2 p-5 bg-[#ffffff] rounded-xl shadow-[0px_4px_40px_0px_rgba(0,0,0,0.1)] border border-transparent hover:border-[#F6DC7F] transition-all duration-300 cursor-default"
             >
               <Image
                 src={ele.icon}
@@ -71,7 +85,7 @@ const WhyChooseUs = () => {
               <p className="text-[#7B6A64] font-medium text-sm md:text-base">
                 {ele.desc}
               </p>
-            </div>
+            </motion.div>
           );
         })}
       </div>

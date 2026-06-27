@@ -7,16 +7,16 @@ const testimonials = [
     id: 1,
     image: "/home/testimonialImg1.png",
     quote:
-      "Found my perfect life partner through RVR. The verification process gave our families complete confidence.",
-    name: "Lakshmi & Arun",
+      "We matched on Gothram and shared values. The regional human verification process gave our families complete confidence.",
+    name: "Kavya & Srinivas",
     date: "Married Mar 2024",
   },
   {
     id: 2,
     image: "/home/testimonialImg2.png",
     quote:
-      "RVR made our family search easy and trustworthy. Premium membership was worth every rupee.",
-    name: "Priya & Rajesh",
+      "Horoscope (Jatakam) compatibility was our parents' top requirement. RVR's verified details made our search smooth and trustworthy.",
+    name: "Sireesha & Venkat",
     date: "Married Jan 2024",
   },
 ];

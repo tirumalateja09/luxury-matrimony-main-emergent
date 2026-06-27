@@ -22,6 +22,22 @@ const Page = () => {
   const inputRefs = useRef([]);
   const router = useRouter();
 
+  // Pick up pending registration details from home page
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const pendingEmail = localStorage.getItem("rvr_pending_email");
+      const otpSent = localStorage.getItem("rvr_otp_sent") === "true";
+      if (pendingEmail) {
+        setEmail(pendingEmail);
+        if (otpSent) {
+          setStep("otp");
+          setTimer(30);
+          localStorage.removeItem("rvr_otp_sent");
+        }
+      }
+    }
+  }, []);
+
   // --- API HANDLERS ---
   const isValidEmail = (value) =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
@@ -95,6 +111,7 @@ const Page = () => {
           "rvr_auth_data",
           JSON.stringify({ token: res.token, user: res.user }),
         );
+        localStorage.removeItem("rvr_pending_email");
 
         router.push("/profiledetails/step1");
       }

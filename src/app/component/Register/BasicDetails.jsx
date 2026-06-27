@@ -47,7 +47,7 @@ const BasicDetails = ({ data, onChange, profileCreatedFor, onNext }) => {
   const defaultClassNames = getDefaultClassNames();
 
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState(data.phone || "");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [phoneVerified, setPhoneVerified] = useState(Boolean(data.phoneVerified));
@@ -138,6 +138,7 @@ const BasicDetails = ({ data, onChange, profileCreatedFor, onNext }) => {
       );
       setPhoneVerified(true);
       onChange("phoneVerified", true);
+      onChange("phone", normalizedPhone);
       toast.success("Phone number verified");
     } catch (error) {
       setPhoneVerified(false);

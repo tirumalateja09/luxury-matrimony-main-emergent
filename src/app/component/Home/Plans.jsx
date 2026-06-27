@@ -11,7 +11,7 @@ const Plans = () => {
             Explore Membership Plans
           </h1>
           <p className=" font-semibold text-[#7B6A64] text-[20px]">
-            Find the perfect membership for your matrimony journey
+            Find the perfect membership for your Telugu matrimonial search
           </p>
         </div>
         <p className=" w-1/2 xl:w-1/3 text-[20px] hidden font-inter text-[#7B6A64] md:block">

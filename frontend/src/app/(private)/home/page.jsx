@@ -59,6 +59,7 @@ export const userData = [
 const Page = () => {
   const [recentlyAdded, setRecentlyAdded] = useState([]);
   const [premiumProfiles, setPremiumProfiles] = useState([]);
+  const [suggestedProfiles, setSuggestedProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState(null);
   const router = useRouter();
@@ -100,27 +101,18 @@ const Page = () => {
     fetchHomeData();
     handleMyData();
   }, []);
+
   const fetchHomeData = async () => {
     try {
       setLoading(true);
-      // 1. Fetch Recently Added Profiles (Limit 10)
-      const recentRes = await api.get(
-        "/search/just-joined-preview?limit=10",
-        "private",
-      );
-      if (recentRes.success) {
-        setRecentlyAdded(recentRes.data);
-      }
-
-      // 2. Fetch Premium Profiles for you (filterType: premium_only, limit: 10)
-      const premiumRes = await api.post(
-        "/search/advanced",
-        { filterType: "premium_only", limit: 10 },
-        "private",
-      );
-      if (premiumRes.success) {
-        setPremiumProfiles(premiumRes.data);
-      }
+      const [recentRes, premiumRes, suggestedRes] = await Promise.all([
+        api.get("/search/just-joined-preview?limit=10", "private"),
+        api.post("/search/advanced", { filterType: "premium_only", limit: 10 }, "private"),
+        api.get("/search/suggested", "private"),
+      ]);
+      if (recentRes.success) setRecentlyAdded(recentRes.data);
+      if (premiumRes.success) setPremiumProfiles(premiumRes.data);
+      if (suggestedRes.success) setSuggestedProfiles(suggestedRes.data || []);
     } catch (error) {
       console.error("Error fetching home data:", error);
     } finally {
@@ -184,7 +176,38 @@ const Page = () => {
    <HomeCarousel />  </div>
       <div>
         <div className="rounded-3xl border lg:border-none border-[#E3B450] py-5 lg:py-0 flex flex-col gap-8 px-4 lg:px-0">
-          {/*     Premium Profiles Section */}
+          {/*  Suggested For You Section (Gold/Premium) */}
+          {suggestedProfiles.length > 0 && (
+            <section>
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <h2 className="text-xl lg:text-2xl font-playfair font-semibold lg:font-bold text-[#2A1D1D] lg:text-[#6e2f2f]">
+                    Suggested For You
+                  </h2>
+                  <p className="text-sm text-[#7b6a64]">Based on your preferences & compatibility</p>
+                </div>
+                <Link href="/matches?filterType=topmatch">
+                  <button className="bg-[linear-gradient(135deg,#E7B84F_0%,#F6DE86_52%,#C79A3A_100%)] text-[#2A1D1D] font-semibold cursor-pointer flex items-center gap-2 px-3 lg:px-6 py-1.5 lg:py-2.5 rounded-full transition-colors">
+                    <Sparkles size={16} /> View All
+                  </button>
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {suggestedProfiles.map((user, id) => (
+                  <div key={id}>
+                    <ProfileCard
+                      summary={summary}
+                      onPhotoClick={() => router.push(`/user/${user?.userId}`)}
+                      user={user}
+                      matchScore={user.matchScore}
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/*  Premium Profiles Section */}
           <section>
             <div className="flex  justify-between items-center mb-6">
               <div>

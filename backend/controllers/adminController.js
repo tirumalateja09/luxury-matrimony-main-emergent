@@ -231,12 +231,33 @@ exports.getAllUsers = async (req, res) => {
         const skip = (page - 1) * limit;
         let query = { isVerified: true };
         const profileFilters = {};
+
+        // Existing filters
         if (req.query.status) query.accountStatus = req.query.status;
         if (req.query.approveStatus) profileFilters.adminStatus = req.query.approveStatus;
         if (req.query.membershipType || req.query.membership) {
             profileFilters.membershipType = req.query.membershipType || req.query.membership;
         }
         if (req.query.gender) profileFilters.gender = req.query.gender;
+
+        // P1: New profile-level filters
+        if (req.query.religion) profileFilters.religion = new RegExp(`^${req.query.religion}$`, 'i');
+        if (req.query.community) profileFilters.community = new RegExp(`^${req.query.community}$`, 'i');
+        if (req.query.state) profileFilters.state = new RegExp(`^${req.query.state}$`, 'i');
+        if (req.query.city) profileFilters.city = new RegExp(`^${req.query.city}$`, 'i');
+        if (req.query.education) profileFilters.highestEducation = new RegExp(`^${req.query.education}$`, 'i');
+
+        // P1: Age range filter (converts to dob range)
+        if (req.query.minAge || req.query.maxAge) {
+            const today = new Date();
+            const minAge = parseInt(req.query.minAge) || 18;
+            const maxAge = parseInt(req.query.maxAge) || 80;
+            profileFilters.dob = {
+                $gte: new Date(today.getFullYear() - maxAge, today.getMonth(), today.getDate()),
+                $lte: new Date(today.getFullYear() - minAge, today.getMonth(), today.getDate()),
+            };
+        }
+
         if (Object.keys(profileFilters).length > 0) {
             const filteredProfiles = await Profile.find(profileFilters).select('userId');
             const filteredUserIds = filteredProfiles.map((p) => p.userId);
@@ -943,6 +964,57 @@ exports.getAuditLogs = async (req, res) => {
             currentPage: page,
             data: logs
         });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// ===================== RESET USER PASSWORD (Super Admin) =====================
+exports.resetUserPassword = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { newPassword } = req.body;
+        if (!newPassword || newPassword.length < 6) {
+            return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
+        }
+        const user = await User.findById(id);
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+        const hashed = await bcrypt.hash(newPassword, 10);
+        user.password = hashed;
+        await user.save();
+
+        // Send email notification
+        try {
+            await transporter.sendMail({
+                from: FROM,
+                to: user.email,
+                subject: 'Your RVR Matrimony password has been reset',
+                html: `<div style="font-family:Georgia,serif;max-width:520px;margin:auto;padding:32px;background:#FBF6ED;border-radius:16px">
+                  <h2 style="color:#2D2424">Password Reset</h2>
+                  <p style="color:#555">Your account password has been reset by an administrator.</p>
+                  <div style="background:#fff;border-radius:12px;padding:16px;margin:20px 0;border:1px solid #F2E9DE">
+                    <p style="margin:0;color:#888;font-size:12px">New Password</p>
+                    <p style="margin:4px 0 0;font-size:18px;font-weight:bold;color:#2D2424;letter-spacing:2px">${newPassword}</p>
+                  </div>
+                  <p style="color:#888;font-size:12px">Please log in and change your password immediately.</p>
+                </div>`,
+            });
+        } catch (emailErr) {
+            console.error('Reset password email error:', emailErr.message);
+        }
+
+        await createAuditLog({
+            req,
+            action: 'reset_password',
+            targetType: 'User',
+            targetId: id,
+            targetName: user.email,
+            changedFields: { password: true },
+            previousValues: {},
+        });
+
+        return res.status(200).json({ success: true, message: 'Password reset successfully. Email sent to user.' });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
     }

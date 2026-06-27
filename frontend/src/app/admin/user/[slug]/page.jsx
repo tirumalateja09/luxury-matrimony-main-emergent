@@ -119,37 +119,39 @@ export default function AdminUserDetailsPage() {
 
     try {
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/admin/users/${userId}/account-status`,
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api"}/admin/users/${userId}/account-status`,
         {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ accountStatus }),
         },
       );
-
       const data = await res.json().catch(() => ({}));
-
       if (!res.ok) {
-        if (res.status === 401 || res.status === 403) {
-          handleUnauthorized();
-          return;
-        }
-
+        if (res.status === 401 || res.status === 403) { handleUnauthorized(); return; }
         throw new Error(data?.message || "Failed to update account status.");
       }
-
-      toast.success(
-        accountStatus === "active"
-          ? "User account activated successfully."
-          : "User account blocked successfully.",
-      );
-
+      toast.success(accountStatus === "active" ? "User account activated." : "User account blocked.");
       fetchUserDetails(token);
     } catch (err) {
       toast.error(err?.message || "Failed to update account status.");
+    }
+  };
+
+  const handleResetPassword = async (userId, newPassword) => {
+    if (!userId || !token || !newPassword) return;
+    try {
+      const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+      const res = await fetch(`${API}/admin/users/${userId}/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ newPassword }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.message || "Reset failed");
+      toast.success("Password reset. Email sent to user.");
+    } catch (err) {
+      toast.error(err?.message || "Failed to reset password.");
     }
   };
 
@@ -180,6 +182,7 @@ export default function AdminUserDetailsPage() {
             onRemarksChange={setRemarks}
             onVerify={handleVerify}
             onAccountStatusChange={handleAccountStatusChange}
+            onResetPassword={handleResetPassword}
             showBackButton
             onBack={() => router.push("/admin")}
           />

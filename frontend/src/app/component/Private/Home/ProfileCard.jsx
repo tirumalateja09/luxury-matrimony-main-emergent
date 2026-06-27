@@ -146,6 +146,7 @@ export default function ProfileCard({
   onPhotoClick,
   summary,
   fetchData,
+  matchScore,
 }) {
   // Mapping logic according to your Mongoose Model
   if (!user) return null;
@@ -234,6 +235,20 @@ export default function ProfileCard({
               size={22}
               className="text-[#6E2F2F] bg-[linear-gradient(135deg,#E3B450_0%,#F6DE86_52%,#C79A3A_100%)] rounded-full p-1"
             />
+          </div>
+        )}
+
+        {/* Match Score Badge */}
+        {matchScore > 0 && (
+          <div className="absolute bottom-4 right-4 group">
+            <div className="flex items-center gap-1 bg-[#2D2424]/80 backdrop-blur-sm rounded-full px-2.5 py-1 border border-[#E3B450]/40">
+              <span className="text-[11px] font-bold text-[#E3B450]">{matchScore}%</span>
+              <span className="text-[9px] text-white/70">match</span>
+            </div>
+            <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block w-44 bg-[#2D2424] text-white text-[10px] rounded-xl p-3 shadow-xl z-10">
+              <p className="font-bold text-[#E3B450] mb-1">Compatibility Score</p>
+              <p>Calculated based on your religion, community, education, income, and lifestyle preferences.</p>
+            </div>
           </div>
         )}
       </div>

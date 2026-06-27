@@ -414,3 +414,47 @@ exports.getJustJoinedPreview = async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 };
+
+// @desc    Gate topmatch check + return top suggested profiles (Gold/Premium only)
+// @route   GET /api/search/suggested
+// @access  Private
+exports.getSuggestedProfiles = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const currentUser = await Profile.findOne({ userId });
+        if (!currentUser) {
+            return res.status(403).json({ success: false, message: 'Complete your profile first.' });
+        }
+
+        // Gate: Gold and Premium only
+        const isPaid = ['Gold', 'Premium'].includes(currentUser.membershipType);
+        if (!isPaid) {
+            return res.status(403).json({
+                success: false,
+                gated: true,
+                message: 'Suggested profiles are available for Gold and Premium members only.',
+            });
+        }
+
+        const preferences = await PartnerPreference.findOne({ profileId: currentUser._id }).lean();
+
+        const candidates = await Profile.find({
+            userId: { $ne: userId },
+            gender: currentUser.gender === 'Male' ? 'Female' : 'Male',
+            adminStatus: 'approved',
+        }).lean();
+
+        const scored = candidates
+            .map((profile) => {
+                const scoreDetails = calculatePreferenceScore(profile, currentUser, preferences);
+                return { ...profile, matchScore: scoreDetails?.matchScore ?? 0 };
+            })
+            .filter((p) => p.matchScore > 40)
+            .sort((a, b) => b.matchScore - a.matchScore)
+            .slice(0, 8);
+
+        return res.status(200).json({ success: true, count: scored.length, data: scored });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};

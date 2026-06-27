@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CircleCheckBig, ExternalLink, FileText, X } from "lucide-react";
+import { CircleCheckBig, ExternalLink, FileText, X, KeyRound, Eye, EyeOff } from "lucide-react";
 
 export default function UserDetailPanel({
   user,
@@ -9,10 +9,14 @@ export default function UserDetailPanel({
   onRemarksChange,
   onVerify,
   onAccountStatusChange,
+  onResetPassword,
   showBackButton = false,
   onBack,
 }) {
   const [previewImage, setPreviewImage] = useState(null);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
 
   useEffect(() => {
     if (!previewImage) return;
@@ -431,7 +435,51 @@ export default function UserDetailPanel({
             Active User
           </button>
         ) : null}
+
+        {onResetPassword && (
+          <button
+            type="button"
+            data-testid="reset-password-btn"
+            onClick={() => setShowResetModal(true)}
+            className="mt-3 w-full cursor-pointer rounded-full border-2 border-[#E3B450] px-4 py-3 font-bold text-[#8B6914] transition hover:bg-[#FBF6ED] flex items-center justify-center gap-2"
+          >
+            <KeyRound size={16} /> Reset Password
+          </button>
+        )}
       </div>
+
+      {/* Reset Password Modal */}
+      {showResetModal && (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-[#2D2424]">Reset Password</h3>
+              <button onClick={() => { setShowResetModal(false); setNewPassword(""); }} className="text-stone-400 hover:text-stone-600"><X size={20} /></button>
+            </div>
+            <p className="text-xs text-stone-500 mb-4">A new password will be sent to the user&apos;s email. Set a strong temporary password.</p>
+            <div className="relative mb-4">
+              <input
+                type={showPwd ? "text" : "password"}
+                placeholder="New password (min 6 chars)"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full border border-stone-200 rounded-xl px-4 py-3 pr-11 text-sm outline-none focus:ring-2 focus:ring-[#E3B450] text-gray-800"
+              />
+              <button type="button" onClick={() => setShowPwd(!showPwd)} className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400">
+                {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => { onResetPassword(user?.account?._id, newPassword); setShowResetModal(false); setNewPassword(""); }}
+              disabled={!newPassword || newPassword.length < 6}
+              className="w-full py-3 rounded-xl bg-[#E3B450] text-[#2D2424] font-bold text-sm hover:bg-[#CAA043] disabled:opacity-50 transition"
+            >
+              Reset &amp; Send Email
+            </button>
+          </div>
+        </div>
+      )}
 
       {previewImage ? (
         <div

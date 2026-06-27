@@ -12,6 +12,8 @@ import {
   Crown,
   Send,
   Loader2,
+  Flag,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -30,6 +32,10 @@ export default function ChatPage() {
   const [incomingRequest, setIncomingRequest] = useState(null);
   const [showContactModal, setShowContactModal] = useState(false);
   const [manualNumber, setManualNumber] = useState("");
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportDesc, setReportDesc] = useState("");
+  const [reportLoading, setReportLoading] = useState(false);
 
   const scrollRef = useRef(null);
 
@@ -197,10 +203,7 @@ export default function ChatPage() {
     try {
       const res = await api.put(
         `/contact/respond/${incomingRequest._id}`,
-        {
-          action: "accepted",
-          manualNumber,
-        },
+        { action: "accepted", manualNumber },
         "private",
       );
 
@@ -215,6 +218,30 @@ export default function ChatPage() {
       }
     } catch (err) {
       toast.error(err?.response?.data?.message || "Something went wrong");
+    }
+  };
+
+  const handleSubmitReport = async () => {
+    if (!reportReason.trim()) { toast.error("Please select a reason."); return; }
+    setReportLoading(true);
+    try {
+      const res = await api.post("/messages/report", {
+        conversationId: id,
+        reportedUserId: user?.id,
+        reason: reportReason,
+        description: reportDesc,
+      }, "private");
+      if (res.success) {
+        toast.success("Report submitted. Our team will review it.");
+        setShowReportModal(false);
+        setReportReason(""); setReportDesc("");
+      } else {
+        toast.error(res.message || "Failed to submit report");
+      }
+    } catch (err) {
+      toast.error(err.message || "Something went wrong");
+    } finally {
+      setReportLoading(false);
     }
   };
 
@@ -303,21 +330,20 @@ export default function ChatPage() {
               onClick={handleSendContactRequest}
               disabled={sendingRequest || requestSent}
               className={`w-10 h-10 cursor-pointer rounded-full border flex items-center justify-center transition-colors
-    ${
-      requestSent
-        ? "border-green-600 text-green-600 bg-green-50"
-        : "border-[#8C3E3E] text-[#8C3E3E] hover:bg-red-50"
-    }
+    ${requestSent ? "border-green-600 text-green-600 bg-green-50" : "border-[#8C3E3E] text-[#8C3E3E] hover:bg-red-50"}
     ${sendingRequest ? "opacity-60 cursor-not-allowed" : ""}
   `}
             >
-              {sendingRequest ? (
-                <Loader2 size={18} className="animate-spin" />
-              ) : requestSent ? (
-                <CheckCircle2 size={18} />
-              ) : (
-                <Phone size={18} />
-              )}
+              {sendingRequest ? <Loader2 size={18} className="animate-spin" /> : requestSent ? <CheckCircle2 size={18} /> : <Phone size={18} />}
+            </button>
+
+            <button
+              onClick={() => setShowReportModal(true)}
+              data-testid="report-abuse-btn"
+              title="Report Abuse"
+              className="w-10 h-10 rounded-full border border-red-200 flex items-center justify-center text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+            >
+              <Flag size={16} />
             </button>
 
             <button className="w-10 h-10 rounded-full border border-stone-200 flex items-center justify-center text-stone-400 hover:bg-stone-50 relative transition-colors">
@@ -432,6 +458,45 @@ export default function ChatPage() {
           </div>
         </form>
       </div>
+      {/* Report Abuse Modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-[#2D2424] font-playfair flex items-center gap-2">
+                <Flag size={18} className="text-red-500" /> Report Abuse
+              </h3>
+              <button onClick={() => setShowReportModal(false)} className="text-stone-400 hover:text-stone-600">
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-xs text-stone-500 mb-4">Your last 5 messages will be captured as evidence. Our team reviews every report.</p>
+            <div className="space-y-3 mb-4">
+              {["Harassment", "Fake Profile", "Inappropriate Content", "Spam", "Scam/Fraud", "Other"].map((r) => (
+                <label key={r} className="flex items-center gap-3 cursor-pointer group">
+                  <input type="radio" name="reason" value={r} checked={reportReason === r} onChange={() => setReportReason(r)} className="accent-[#6E2F2F]" />
+                  <span className={`text-sm ${reportReason === r ? "text-[#6E2F2F] font-semibold" : "text-stone-600"}`}>{r}</span>
+                </label>
+              ))}
+            </div>
+            <textarea
+              placeholder="Additional details (optional)"
+              value={reportDesc}
+              onChange={(e) => setReportDesc(e.target.value)}
+              rows={3}
+              className="w-full border border-stone-200 rounded-xl p-3 text-sm mb-4 resize-none focus:ring-2 focus:ring-red-200 outline-none text-stone-700"
+            />
+            <button
+              onClick={handleSubmitReport}
+              disabled={reportLoading || !reportReason}
+              data-testid="submit-report-btn"
+              className="w-full py-3 rounded-xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 disabled:opacity-50 transition"
+            >
+              {reportLoading ? "Submitting..." : "Submit Report"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -27,6 +27,7 @@ const {
     updateAdminAccount,
     deleteAdminAccount,
     getAuditLogs,
+    resetUserPassword,
 } = require('../controllers/adminController');
 
 const {
@@ -66,6 +67,7 @@ router.get('/users', adminProtect, getAllUsers);
 // Specific routes BEFORE parameterized routes
 router.post('/users/manual', adminProtect, createUserManually);
 router.post('/users/bulk-upload', adminProtect, upload.single('file'), bulkCreateUsersFromExcel);
+router.post('/users/:id/reset-password', adminProtect, requireSuperAdmin, resetUserPassword);
 router.put('/users/:id/account-status', adminProtect, updateUserAccountStatus);
 
 // user-details: specific before parameterized

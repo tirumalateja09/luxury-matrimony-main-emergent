@@ -3,8 +3,41 @@ const razorpayInstance = require('../config/razorpay');
 const Subscription = require('../models/Subscription');
 const ProfileBoost = require('../models/ProfileBoost');
 const Profile = require('../models/Profile');
+const User = require('../models/User');
 const { createNotification } = require('../utils/notificationHelper');
 const { PLANS } = require('../config/constants');
+const transporter = require('../utils/emailConfig');
+
+const SITE_URL = (process.env.FRONTEND_URLS || 'http://localhost:3001').split(',')[0].trim();
+const FROM = `"RVR Luxury Matrimony" <${process.env.EMAIL_USER}>`;
+
+const buildReceiptEmail = ({ name, email, plan, amount, transactionId, type, expiryDate }) => `
+<!DOCTYPE html><html><body style="margin:0;padding:0;background:#FBF6ED;font-family:Georgia,serif">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
+<table width="520" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)">
+  <tr><td style="background:linear-gradient(135deg,#2D2424,#6E2F2F);padding:28px 32px;text-align:center">
+    <p style="margin:0;color:#E3B450;font-size:11px;letter-spacing:3px;text-transform:uppercase">RVR Luxury Matrimony</p>
+    <h1 style="margin:8px 0 0;color:#fff;font-size:22px">Payment Successful</h1>
+  </td></tr>
+  <tr><td style="padding:32px">
+    <p style="color:#555;margin:0 0 16px">Dear <strong>${name || 'Member'}</strong>,</p>
+    <p style="color:#555;margin:0 0 24px">Thank you for your payment. Your <strong>${plan}</strong> ${type === 'SUBSCRIPTION' ? 'subscription' : 'profile boost'} is now active.</p>
+    <table width="100%" cellpadding="12" style="border:1px solid #F2E9DE;border-radius:12px;margin-bottom:24px;border-collapse:collapse">
+      <tr style="background:#FBF6ED"><td colspan="2" style="font-weight:bold;color:#2D2424;font-size:13px;letter-spacing:1px;text-transform:uppercase">Payment Receipt</td></tr>
+      <tr><td style="color:#888;font-size:13px;border-top:1px solid #F2E9DE">Plan</td><td style="color:#2D2424;font-weight:bold;font-size:13px;border-top:1px solid #F2E9DE">${plan}</td></tr>
+      <tr><td style="color:#888;font-size:13px;border-top:1px solid #F2E9DE">Amount Paid</td><td style="color:#2D2424;font-weight:bold;font-size:13px;border-top:1px solid #F2E9DE">₹${amount}</td></tr>
+      <tr><td style="color:#888;font-size:13px;border-top:1px solid #F2E9DE">Transaction ID</td><td style="color:#555;font-size:12px;border-top:1px solid #F2E9DE;word-break:break-all">${transactionId}</td></tr>
+      ${expiryDate ? `<tr><td style="color:#888;font-size:13px;border-top:1px solid #F2E9DE">Valid Until</td><td style="color:#2D2424;font-weight:bold;font-size:13px;border-top:1px solid #F2E9DE">${expiryDate}</td></tr>` : ''}
+      <tr><td style="color:#888;font-size:13px;border-top:1px solid #F2E9DE">Email</td><td style="color:#555;font-size:13px;border-top:1px solid #F2E9DE">${email}</td></tr>
+    </table>
+    <div style="text-align:center">
+      <a href="${SITE_URL}/home" style="display:inline-block;padding:14px 36px;background:linear-gradient(135deg,#E3B450,#CAA043);color:#2D2424;font-weight:bold;text-decoration:none;border-radius:8px;font-size:15px">Go to Dashboard</a>
+    </div>
+  </td></tr>
+  <tr><td style="background:#FBF6ED;padding:20px;text-align:center;border-top:1px solid #F2E9DE">
+    <p style="margin:0;color:#aaa;font-size:11px">RVR Luxury Matrimony · Keep this email as your payment receipt</p>
+  </td></tr>
+</table></td></tr></table></body></html>`;
 
 // @desc    Step 1: Create Razorpay Order (Secure - Prices from Server)
 exports.createOrder = async (req, res) => {
@@ -136,6 +169,33 @@ exports.verifyPayment = async (req, res) => {
 
         // 4. Send System Notification
         await createNotification(userId, userId, 'system', notificationTitle, notificationMessage);
+
+        // 5. Send Payment Receipt Email
+        try {
+            const user = await User.findById(userId).select('email');
+            const profile = await Profile.findOne({ userId }).select('fullName planExpiresAt');
+            if (user?.email) {
+                const expiryDate = purchaseType === 'SUBSCRIPTION' && !selectedPlan.isLifetime
+                    ? new Date(profile?.planExpiresAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
+                    : null;
+                await transporter.sendMail({
+                    from: FROM,
+                    to: user.email,
+                    subject: `Payment Confirmed — ${selectedPlan.planName} plan activated on RVR Matrimony`,
+                    html: buildReceiptEmail({
+                        name: profile?.fullName,
+                        email: user.email,
+                        plan: selectedPlan.planName,
+                        amount: selectedPlan.amount,
+                        transactionId: razorpay_payment_id,
+                        type: purchaseType,
+                        expiryDate,
+                    }),
+                });
+            }
+        } catch (emailErr) {
+            console.error('Receipt email error:', emailErr.message);
+        }
 
         res.status(200).json({
             success: true,

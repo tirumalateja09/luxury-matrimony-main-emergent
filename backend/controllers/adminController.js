@@ -9,6 +9,33 @@ const Admin = require('../models/Admin');
 const AuditLog = require('../models/AuditLog');
 const bcrypt = require('bcryptjs');
 const XLSX = require('xlsx');
+const transporter = require('../utils/emailConfig');
+
+const SITE_URL = (process.env.FRONTEND_URLS || 'http://localhost:3001').split(',')[0].trim();
+const FROM = `"RVR Luxury Matrimony" <${process.env.EMAIL_USER}>`;
+
+const buildKycEmail = (name, status, remarks) => `
+<!DOCTYPE html><html><body style="margin:0;padding:0;background:#FBF6ED;font-family:Georgia,serif">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
+<table width="520" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)">
+  <tr><td style="background:${status === 'approved' ? 'linear-gradient(135deg,#1a5c2a,#27ae60)' : 'linear-gradient(135deg,#6E2F2F,#c0392b)'};padding:28px 32px;text-align:center">
+    <p style="margin:0;color:#fff;font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:.8">RVR Luxury Matrimony</p>
+    <h1 style="margin:8px 0 0;color:#fff;font-size:22px">Profile ${status === 'approved' ? 'Approved' : 'Rejected'}</h1>
+  </td></tr>
+  <tr><td style="padding:32px">
+    <p style="color:#555;margin:0 0 16px">Dear <strong>${name || 'Member'}</strong>,</p>
+    ${status === 'approved'
+        ? `<p style="color:#555;margin:0 0 24px">Congratulations! Your profile has been <strong style="color:#27ae60">verified and approved</strong>. Your profile is now live and visible to potential matches.</p>
+           <div style="text-align:center"><a href="${SITE_URL}/home" style="display:inline-block;padding:14px 36px;background:linear-gradient(135deg,#E3B450,#CAA043);color:#2D2424;font-weight:bold;text-decoration:none;border-radius:8px;font-size:15px">View My Profile</a></div>`
+        : `<p style="color:#555;margin:0 0 16px">Your profile verification was <strong style="color:#c0392b">not approved</strong> for the following reason:</p>
+           <div style="background:#FFF5F5;border-left:4px solid #c0392b;border-radius:8px;padding:16px;margin-bottom:24px"><p style="margin:0;color:#c0392b;font-size:14px">${remarks || 'Documents unclear or incomplete.'}</p></div>
+           <p style="color:#555;margin:0 0 24px">Please update your documents and resubmit for verification.</p>
+           <div style="text-align:center"><a href="${SITE_URL}/profile/verification" style="display:inline-block;padding:14px 36px;background:linear-gradient(135deg,#E3B450,#CAA043);color:#2D2424;font-weight:bold;text-decoration:none;border-radius:8px;font-size:15px">Resubmit Documents</a></div>`}
+  </td></tr>
+  <tr><td style="background:#FBF6ED;padding:20px;text-align:center;border-top:1px solid #F2E9DE">
+    <p style="margin:0;color:#aaa;font-size:11px">RVR Luxury Matrimony · Verification Team</p>
+  </td></tr>
+</table></td></tr></table></body></html>`;
 
 const allowedProfileFieldsForAdminCreate = [
     'fullName', 'dob', 'height', 'gender', 'physicalStatus', 'numberOfChildren',
@@ -159,6 +186,23 @@ exports.verifyUserProfile = async (req, res) => {
                 ? 'Congratulations! Your profile is now live.'
                 : `Your profile was rejected. Reason: ${remarks}`
         });
+
+        // Send KYC status email
+        try {
+            const user = await User.findById(profile.userId).select('email');
+            if (user?.email) {
+                await transporter.sendMail({
+                    from: FROM,
+                    to: user.email,
+                    subject: status === 'approved'
+                        ? 'Your RVR Matrimony profile has been approved!'
+                        : 'Action required: Your RVR Matrimony profile verification',
+                    html: buildKycEmail(profile.fullName, status, remarks),
+                });
+            }
+        } catch (emailErr) {
+            console.error('KYC email error:', emailErr.message);
+        }
 
         // Audit log
         await createAuditLog({

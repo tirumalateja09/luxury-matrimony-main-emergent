@@ -104,4 +104,21 @@ router.delete('/admins/:id', adminProtect, requireSuperAdmin, deleteAdminAccount
 // ===================== AUDIT LOGS (super_admin only) =====================
 router.get('/audit-logs', adminProtect, requireSuperAdmin, getAuditLogs);
 
+// Price-drop alert trigger
+router.post('/price-drop-alert', adminProtect, requireSuperAdmin, async (req, res) => {
+    try {
+        const { plan, oldPrice, newPrice } = req.body;
+        if (!plan || !oldPrice || !newPrice) {
+            return res.status(400).json({ success: false, message: 'plan, oldPrice, newPrice required' });
+        }
+        process.env.PRICE_DROP_ALERTS_ENABLED = 'true';
+        const { sendPriceDropAlerts } = require('../utils/cronJobs');
+        const sent = await sendPriceDropAlerts({ plan, oldPrice, newPrice });
+        process.env.PRICE_DROP_ALERTS_ENABLED = 'false';
+        return res.status(200).json({ success: true, message: `Price-drop alerts sent to ${sent} users`, sent });
+    } catch (e) {
+        return res.status(500).json({ success: false, message: e.message });
+    }
+});
+
 module.exports = router;

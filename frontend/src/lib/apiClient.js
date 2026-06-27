@@ -2,9 +2,14 @@ import { getToken } from "@/function/getToken";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
+const getAdminToken = () => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("adminToken") || null;
+};
+
 export const request = async (method, endpoint, data = null, auth = "public") => {
-    // 1. Token fetch
-    const token = getToken();
+    // 1. Token fetch — admin pages get adminToken, others get user token
+    const token = auth === "admin" ? getAdminToken() : getToken();
 
     const headers = {};
 
@@ -66,5 +71,6 @@ export const api = {
     put: (url, data, auth = "public") => request("PUT", url, data, auth),
     patch: (url, data, auth = "public") => request("PATCH", url, data, auth),
     delete: (url, auth = "public") => request("DELETE", url, null, auth),
+    del: (url, auth = "public") => request("DELETE", url, null, auth),
     postFile: (url, formData, auth = "private") => request("POST", url, formData, auth),
 };

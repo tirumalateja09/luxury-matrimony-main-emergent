@@ -11,6 +11,8 @@ import {
   ChevronLeft,
   X,
   CreditCard,
+  Tag,
+  Gift,
 } from "lucide-react";
 import { api } from "@/lib/apiClient";
 import Link from "next/link";
@@ -84,6 +86,9 @@ const PricingSection = () => {
 
   const [loading, setLoading] = useState(false);
   const [profileData, setProfileData] = useState(null);
+  const [couponInput, setCouponInput] = useState("");
+  const [couponData, setCouponData] = useState(null); // { couponId, code, discountAmount, finalAmount, message }
+  const [couponLoading, setCouponLoading] = useState(false);
 
   useEffect(() => {
     const subscription = localStorage.getItem("subscription");
@@ -114,6 +119,31 @@ const PricingSection = () => {
     fetchMyProfile();
   }, []);
 
+  const validateCoupon = async () => {
+    if (!couponInput.trim()) { toast.error("Enter a coupon code"); return; }
+    setCouponLoading(true);
+    try {
+      const res = await api.post("/coupons/validate", {
+        code: couponInput.trim().toUpperCase(),
+        amount: 4999, // Use base amount for validation; server will recalc on createOrder
+      }, "private");
+      if (res.success) {
+        setCouponData(res);
+        toast.success(res.message || "Coupon applied!");
+      } else {
+        toast.error(res.message || "Invalid coupon");
+        setCouponData(null);
+      }
+    } catch (e) {
+      toast.error(e.message || "Coupon validation failed");
+      setCouponData(null);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const removeCoupon = () => { setCouponData(null); setCouponInput(""); };
+
   const handlePayment = async (planKey) => {
 
     if (!planKey || planKey === "FREE") return;
@@ -122,7 +152,7 @@ const PricingSection = () => {
     try {
       const data = await api.post(
         "/payment/create-order",
-        { planKey },
+        { planKey, couponCode: couponData?.code || null },
         "private",
       );
       if (!data.success) {
@@ -146,6 +176,7 @@ const PricingSection = () => {
               razorpay_signature: response.razorpay_signature,
               purchaseType: "SUBSCRIPTION",
               planKey: planKey,
+              couponId: data.couponId || null,
             };
 
             const verifyData = await api.post(
@@ -296,6 +327,43 @@ const PricingSection = () => {
               </button>{" "}
             </Link>
           </div>
+          {/* Coupon Code Section */}
+          <div className="bg-white rounded-2xl border border-[#F2E9DE] shadow-sm p-5 max-w-xl mx-auto w-full">
+            <div className="flex items-center gap-2 mb-3">
+              <Tag size={16} className="text-[#E3B450]" />
+              <h3 className="font-semibold text-[#2D2424] text-sm">Have a coupon code?</h3>
+              <Link href="/profile/referrals" className="ml-auto text-xs text-[#8B6914] hover:underline flex items-center gap-1">
+                <Gift size={12} /> Get referral code
+              </Link>
+            </div>
+            {couponData ? (
+              <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                <div>
+                  <span className="font-mono font-bold text-green-700 text-sm tracking-wider">{couponData.code}</span>
+                  <p className="text-xs text-green-600 mt-0.5">{couponData.message}</p>
+                </div>
+                <button onClick={removeCoupon} className="p-1.5 rounded-lg hover:bg-green-100 text-green-500 transition">
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => e.key === "Enter" && validateCoupon()}
+                  placeholder="Enter coupon code"
+                  data-testid="coupon-input"
+                  className="flex-1 border border-stone-200 rounded-xl px-4 py-2.5 text-sm font-mono tracking-wider uppercase text-gray-800 focus:ring-2 focus:ring-[#E3B450] outline-none"
+                />
+                <button onClick={validateCoupon} disabled={couponLoading} data-testid="apply-coupon-btn"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#E3B450] to-[#CAA043] text-[#2D2424] font-bold text-sm hover:opacity-90 disabled:opacity-60 transition">
+                  {couponLoading ? "..." : "Apply"}
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Pricing Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 justify-items-center">
             {plans.map((plan, idx) => (

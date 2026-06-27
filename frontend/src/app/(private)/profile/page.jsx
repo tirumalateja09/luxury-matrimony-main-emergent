@@ -212,6 +212,7 @@ import {
   TrendingUp,
   Lock,
   Settings,
+  Gift,
 } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/apiClient";
@@ -254,6 +255,12 @@ const ProfileDashboard = () => {
       label: "Membership / Subscription",
       color: "text-stone-800",
       href: "/profile/membership",
+    },
+    {
+      icon: <Gift size={20} className="text-amber-500" />,
+      label: "Refer & Earn",
+      color: "text-stone-800",
+      href: "/profile/referrals",
     },
         {
       icon: <Settings size={20} className="text-green-600" />,

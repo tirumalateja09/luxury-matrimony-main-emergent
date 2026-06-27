@@ -6,6 +6,7 @@ import {
   LayoutDashboard, Users, CheckCircle2, Heart, AlertTriangle,
   Bell, MessageSquareText, Images, UserPlus, Crown, TrendingUp,
   Settings, ShieldCheck, LogOut, ChevronRight, UserCog, ScrollText, Store, Tag,
+  FileText, GitBranch,
 } from "lucide-react";
 
 const navItemBase =
@@ -96,6 +97,7 @@ export default function AdminSidebar({ isOpen, onClose }) {
               Business
             </p>
             <NavItem href="/admin/subscribers" icon={Crown} label="Subscribers" active={isActive("/admin/subscribers")} superAdminOnly isSuperAdmin={isSuperAdmin} />
+            <NavItem href="/admin/referrals" icon={GitBranch} label="Referrals" active={isActive("/admin/referrals")} superAdminOnly isSuperAdmin={isSuperAdmin} />
             <NavItem href="/admin/contact-us" icon={MessageSquareText} label="Contact Queries" active={isActive("/admin/contact-us")} superAdminOnly isSuperAdmin={isSuperAdmin} />
             <NavItem href="/admin/add-user" icon={UserPlus} label="Add User" active={isActive("/admin/add-user")} superAdminOnly isSuperAdmin={isSuperAdmin} />
 
@@ -104,6 +106,7 @@ export default function AdminSidebar({ isOpen, onClose }) {
             </p>
             <NavItem href="/admin/sliders" icon={Images} label="Dashboard Sliders" active={isActive("/admin/sliders")} superAdminOnly isSuperAdmin={isSuperAdmin} />
             <NavItem href="/admin/home-sliders" icon={Images} label="Homepage Sliders" active={isActive("/admin/home-sliders")} superAdminOnly isSuperAdmin={isSuperAdmin} />
+            <NavItem href="/admin/content" icon={FileText} label="Content Management" active={isActive("/admin/content")} superAdminOnly isSuperAdmin={isSuperAdmin} />
 
             <p className="px-4 pt-4 mb-1 text-[10px] font-bold uppercase tracking-widest text-stone-300">
               System

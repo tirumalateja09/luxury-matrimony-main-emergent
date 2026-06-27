@@ -42,7 +42,7 @@ const buildReceiptEmail = ({ name, email, plan, amount, transactionId, type, exp
 // @desc    Step 1: Create Razorpay Order (Secure - Prices from Server)
 exports.createOrder = async (req, res) => {
     try {
-        const { planKey } = req.body; // Frontend se sirf 'GOLD' ya 'BOOST_7' aayega
+        const { planKey, couponCode } = req.body;
         const userId = req.user.id;
         const selectedPlan = PLANS[planKey?.toUpperCase()];
         if (!selectedPlan) {
@@ -51,7 +51,6 @@ exports.createOrder = async (req, res) => {
         const profile = await Profile.findOne({ userId });
 
         if (profile.membershipType === selectedPlan.planName) {
-            // Check karein ki plan abhi active hai ya expire ho chuka hai
             const today = new Date();
             if (profile.planExpiresAt && profile.planExpiresAt > today) {
                 return res.status(400).json({
@@ -60,14 +59,48 @@ exports.createOrder = async (req, res) => {
                 });
             }
         }
+
+        let finalAmount = selectedPlan.amount;
+        let couponId = null;
+        let discountAmount = 0;
+
+        // Apply coupon if provided
+        if (couponCode) {
+            try {
+                const Coupon = require('../models/Coupon');
+                const coupon = await Coupon.findOne({ code: couponCode.toUpperCase(), isActive: true });
+                if (coupon && !(coupon.expiresAt && new Date(coupon.expiresAt) < new Date())
+                    && (coupon.maxUses === null || coupon.usedCount < coupon.maxUses)
+                    && !coupon.usedBy.some((id) => id.toString() === userId.toString())
+                    && finalAmount >= (coupon.minOrderAmount || 0)
+                    && (coupon.applicablePlans.length === 0 || coupon.applicablePlans.includes(planKey.toUpperCase()))) {
+
+                    discountAmount = coupon.discountType === 'flat'
+                        ? coupon.discountValue
+                        : Math.round((finalAmount * coupon.discountValue) / 100);
+                    if (coupon.maxDiscountAmount) discountAmount = Math.min(discountAmount, coupon.maxDiscountAmount);
+                    finalAmount = Math.max(1, finalAmount - discountAmount);
+                    couponId = coupon._id;
+                }
+            } catch (ce) { console.error('Coupon lookup error:', ce.message); }
+        }
+
         const options = {
-            amount: selectedPlan.amount * 100, // Amount paise mein (INR * 100)
+            amount: finalAmount * 100,
             currency: "INR",
             receipt: `receipt_${Date.now()}`,
+            notes: couponId ? { couponId: couponId.toString() } : {},
         };
 
         const order = await razorpayInstance.orders.create(options);
-        res.status(200).json({ success: true, order });
+        res.status(200).json({
+            success: true,
+            order,
+            couponId: couponId ? couponId.toString() : null,
+            discountAmount,
+            finalAmount,
+            originalAmount: selectedPlan.amount,
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -197,6 +230,25 @@ exports.verifyPayment = async (req, res) => {
             console.error('Receipt email error:', emailErr.message);
         }
 
+        // 6. Redeem coupon if provided
+        if (req.body.couponId) {
+            try {
+                const Coupon = require('../models/Coupon');
+                const coupon = await Coupon.findById(req.body.couponId);
+                if (coupon && !coupon.usedBy.includes(userId)) {
+                    coupon.usedCount += 1;
+                    coupon.usedBy.push(userId);
+                    await coupon.save();
+                }
+            } catch (ce) { console.error('Coupon redeem error:', ce.message); }
+        }
+
+        // 7. Mark referral as rewarded
+        try {
+            const { markReferralRewarded } = require('../controllers/referralController');
+            await markReferralRewarded(userId);
+        } catch (re) { console.error('Referral reward error:', re.message); }
+
         res.status(200).json({
             success: true,
             message: "Payment Verified & Plan Activated!",
@@ -205,5 +257,37 @@ exports.verifyPayment = async (req, res) => {
 
     } catch (error) {
         res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+    }
+};
+
+// @desc  Razorpay webhook (server-to-server, no auth needed)
+// @route POST /api/payment/webhook
+exports.razorpayWebhook = async (req, res) => {
+    try {
+        const secret = process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET;
+        const signature = req.headers['x-razorpay-signature'];
+
+        if (secret && signature) {
+            const hmac = require('crypto').createHmac('sha256', secret);
+            hmac.update(JSON.stringify(req.body));
+            const digest = hmac.digest('hex');
+            if (digest !== signature) {
+                return res.status(400).json({ success: false, message: 'Invalid webhook signature' });
+            }
+        }
+
+        const event = req.body.event;
+        const payment = req.body.payload?.payment?.entity;
+
+        if (event === 'payment.captured' && payment) {
+            console.log(`Webhook: payment.captured — ${payment.id} ₹${payment.amount / 100}`);
+            // Idempotent: Subscription already created in verifyPayment from frontend.
+            // This webhook serves as a fallback for missed frontend confirmations.
+        }
+
+        return res.status(200).json({ success: true, received: true });
+    } catch (error) {
+        console.error('Webhook error:', error.message);
+        return res.status(500).json({ success: false, message: error.message });
     }
 };

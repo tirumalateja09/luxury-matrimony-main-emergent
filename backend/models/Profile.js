@@ -143,6 +143,7 @@ const profileSchema = new mongoose.Schema(
     profilePhotos: [{ url: String, isMain: { type: Boolean, default: false } }],
     idProofUrl: String,
     verificationSelfieUrl: String,
+    referralCode: { type: String, default: '', uppercase: true, trim: true },
     adminStatus: {
       type: String,
       default: "pending",

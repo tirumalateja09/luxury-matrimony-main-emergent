@@ -1,0 +1,3 @@
+{
+  "/(private)/profiledetails/[step]/page": "app/(private)/profiledetails/[step]/page.js"
+}

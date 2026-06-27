@@ -1,0 +1,15 @@
+{
+  "pages": {},
+  "app": {
+    "[project]/frontend/src/app/(public)/contact/page": [
+      "static/media/caa3a2e1cccd8315-s.p.3b6cae6d.woff2",
+      "static/media/797e433ab948586e-s.p.29207c2f.woff2",
+      "static/media/2a65768255d6b625-s.p.d19752fb.woff2",
+      "static/media/83afe278b6a6bb3c-s.p.3a6ba036.woff2",
+      "static/media/8e451580e5e95631-s.p.0e564e6e.woff2",
+      "static/media/345c85a432359eed-s.p.eead68dd.woff2"
+    ]
+  },
+  "appUsingSizeAdjust": true,
+  "pagesUsingSizeAdjust": false
+}

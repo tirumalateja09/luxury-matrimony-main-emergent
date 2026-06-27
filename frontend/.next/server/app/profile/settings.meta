@@ -1,0 +1,17 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(private)/layout,_N_T_/(private)/profile/layout,_N_T_/(private)/profile/settings/layout,_N_T_/(private)/profile/settings/page,_N_T_/profile/settings"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/!KHByaXZhdGUp/profile/settings/__PAGE__",
+    "/!KHByaXZhdGUp/profile/settings",
+    "/!KHByaXZhdGUp/profile",
+    "/!KHByaXZhdGUp",
+    "/_index",
+    "/_head"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(private)/layout,_N_T_/(private)/prioritymatches/layout,_N_T_/(private)/prioritymatches/page,_N_T_/prioritymatches"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/!KHByaXZhdGUp/prioritymatches/__PAGE__",
+    "/!KHByaXZhdGUp/prioritymatches",
+    "/!KHByaXZhdGUp",
+    "/_index",
+    "/_head"
+  ]
+}

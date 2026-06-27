@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(private)/layout,_N_T_/(private)/messages/layout,_N_T_/(private)/messages/page,_N_T_/messages"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/!KHByaXZhdGUp/messages/__PAGE__",
+    "/!KHByaXZhdGUp/messages",
+    "/!KHByaXZhdGUp",
+    "/_index",
+    "/_head"
+  ]
+}

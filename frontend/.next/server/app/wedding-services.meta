@@ -1,0 +1,16 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(private)/layout,_N_T_/(private)/wedding-services/layout,_N_T_/(private)/wedding-services/page,_N_T_/wedding-services"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/!KHByaXZhdGUp/wedding-services/__PAGE__",
+    "/!KHByaXZhdGUp/wedding-services",
+    "/!KHByaXZhdGUp",
+    "/_index",
+    "/_head"
+  ]
+}

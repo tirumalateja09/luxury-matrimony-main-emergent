@@ -1,0 +1,18 @@
+{
+  "headers": {
+    "x-nextjs-stale-time": "300",
+    "x-nextjs-prerender": "1",
+    "x-next-cache-tags": "_N_T_/layout,_N_T_/(private)/layout,_N_T_/(private)/profile/layout,_N_T_/(private)/profile/membership/layout,_N_T_/(private)/profile/membership/compare/layout,_N_T_/(private)/profile/membership/compare/page,_N_T_/profile/membership/compare"
+  },
+  "segmentPaths": [
+    "/_tree",
+    "/_full",
+    "/!KHByaXZhdGUp/profile/membership/compare/__PAGE__",
+    "/!KHByaXZhdGUp/profile/membership/compare",
+    "/!KHByaXZhdGUp/profile/membership",
+    "/!KHByaXZhdGUp/profile",
+    "/!KHByaXZhdGUp",
+    "/_index",
+    "/_head"
+  ]
+}

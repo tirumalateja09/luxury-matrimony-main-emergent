@@ -1,0 +1,3 @@
+{
+  "/(private)/messages/[id]/page": "app/(private)/messages/[id]/page.js"
+}

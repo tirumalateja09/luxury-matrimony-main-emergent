@@ -5,13 +5,14 @@ import Image from "next/image";
 import toast from "react-hot-toast";
 import { Crown, ShieldCheck, Eye, EyeOff } from "lucide-react";
 
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
 const ROLES = [
   {
     id: "super_admin",
     label: "Super Admin",
-    description: "Full access to all features",
-    email: "admin@rvrluxury.com",
-    password: "Admin@123456",
+    description: "Full access to all features including revenue & admin management",
     icon: Crown,
     gradient: "from-[#E3B450] to-[#CAA043]",
     ring: "ring-[#E3B450]",
@@ -22,9 +23,7 @@ const ROLES = [
   {
     id: "admin",
     label: "Admin",
-    description: "Limited access — no revenue",
-    email: "admin2@rvrluxury.com",
-    password: "Admin@123",
+    description: "Limited access — user management & verifications only",
     icon: ShieldCheck,
     gradient: "from-[#6E2F2F] to-[#5A2424]",
     ring: "ring-[#6E2F2F]",
@@ -44,22 +43,17 @@ export default function AdminLogin() {
 
   const handleRoleSelect = (role) => {
     setSelectedRole(role.id);
-    setEmail(role.email);
-    setPassword(role.password);
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/admin/login`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password }),
-        },
-      );
+      const res = await fetch(`${API_URL}/admin/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
       const text = await res.text();
       let data;
       try {
@@ -136,18 +130,6 @@ export default function AdminLogin() {
                   <p className="text-[11px] text-stone-400 mt-0.5 leading-tight">
                     {role.description}
                   </p>
-
-                  {/* Credentials */}
-                  <div className="mt-2.5 space-y-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-semibold text-stone-400 w-8">Email</span>
-                      <span className="text-[10px] text-stone-500 truncate">{role.email}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-semibold text-stone-400 w-8">Pass</span>
-                      <span className="text-[10px] text-stone-500">{role.password}</span>
-                    </div>
-                  </div>
 
                   {/* Selected indicator */}
                   {isSelected && (

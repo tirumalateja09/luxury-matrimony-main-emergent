@@ -43,6 +43,13 @@ backend/.env
 # Vercel
 .vercel
 
+# Emergent internal
+memory/
+test_reports/
+*.log
+*.out.log
+*.err.log
+
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts

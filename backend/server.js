@@ -50,24 +50,46 @@ connectDB().then(() => {
   seedAdmin();
 });
 
-// ===================== SEED ADMIN =====================
+// ===================== SEED ADMINS =====================
 async function seedAdmin() {
   try {
     const Admin = require('./models/Admin');
     const bcrypt = require('bcryptjs');
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@rvrluxury.com';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123456';
-    const existing = await Admin.findOne({ email: adminEmail });
-    if (!existing) {
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(adminPassword, salt);
-      await Admin.create({
-        name: 'Super Admin',
-        email: adminEmail,
-        password: hashedPassword,
-        role: 'super_admin',
-      });
+
+    // Seed Super Admin
+    const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'admin@rvrluxury.com';
+    const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD || 'Admin@123456';
+    const existingSuperAdmin = await Admin.findOne({ email: superAdminEmail });
+    if (!existingSuperAdmin) {
+      const hash = await bcrypt.hash(superAdminPassword, 10);
+      await Admin.create({ name: 'Super Admin', email: superAdminEmail, password: hash, role: 'super_admin' });
+      console.log(`Super Admin seeded: ${superAdminEmail}`);
+    } else {
+      // Update password if changed in .env
+      const match = await bcrypt.compare(superAdminPassword, existingSuperAdmin.password);
+      if (!match) {
+        const hash = await bcrypt.hash(superAdminPassword, 10);
+        await Admin.findByIdAndUpdate(existingSuperAdmin._id, { password: hash });
+        console.log(`Super Admin password updated: ${superAdminEmail}`);
+      }
+    }
+
+    // Seed Regular Admin
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin2@rvrluxury.com';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin@123';
+    const existingAdmin = await Admin.findOne({ email: adminEmail });
+    if (!existingAdmin) {
+      const hash = await bcrypt.hash(adminPassword, 10);
+      await Admin.create({ name: 'Admin', email: adminEmail, password: hash, role: 'admin' });
       console.log(`Admin seeded: ${adminEmail}`);
+    } else {
+      // Update password if changed in .env
+      const match = await bcrypt.compare(adminPassword, existingAdmin.password);
+      if (!match) {
+        const hash = await bcrypt.hash(adminPassword, 10);
+        await Admin.findByIdAndUpdate(existingAdmin._id, { password: hash });
+        console.log(`Admin password updated: ${adminEmail}`);
+      }
     }
   } catch (error) {
     console.error('Admin seed error:', error.message);

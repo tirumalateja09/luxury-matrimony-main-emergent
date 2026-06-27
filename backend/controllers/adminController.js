@@ -1054,3 +1054,286 @@ exports.resetUserPassword = async (req, res) => {
         return res.status(500).json({ success: false, message: error.message });
     }
 };
+
+
+// ===================== EDIT USER PROFILE (Admin Direct Edit) =====================
+const ADMIN_EDITABLE_PROFILE_FIELDS = [
+    'fullName', 'dob', 'gender', 'height', 'physicalStatus', 'maritalStatus', 'numberOfChildren',
+    'childrenLivingTogether', 'diet', 'profileCreatedFor', 'language', 'motherTongue',
+    'religion', 'community', 'subCommunity', 'bio', 'aboutFamily', 'fathersOccupation',
+    'mothersOccupation', 'brothers', 'sisters', 'marriedSiblings', 'familyIncomeRange',
+    'familyStatus', 'familyType', 'drinkingHabits', 'smokingHabits', 'openToPets',
+    'ownHouse', 'ownCar', 'hobbies', 'interests', 'country', 'state', 'city',
+    'citizenship', 'residentStatus', 'highestEducation', 'degree', 'profession',
+    'aboutCareer', 'describeMe', 'annualIncome', 'companyName',
+    'rashi', 'nakshatra', 'gothram', 'birthTime', 'birthPlace', 'manglik',
+    'adminStatus', 'adminRemarks', 'membershipType', 'isFeatured',
+];
+
+const buildAdminEditEmail = (name, email, changes, adminName) => `
+<!DOCTYPE html><html><body style="margin:0;padding:0;background:#FBF6ED;font-family:Georgia,serif">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
+<table width="520" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)">
+  <tr><td style="background:linear-gradient(135deg,#2D2424,#6E2F2F);padding:28px 32px;text-align:center">
+    <p style="margin:0;color:#E3B450;font-size:11px;letter-spacing:3px;text-transform:uppercase">RVR Luxury Matrimony</p>
+    <h1 style="margin:8px 0 0;color:#fff;font-size:22px">Profile Updated by Admin</h1>
+  </td></tr>
+  <tr><td style="padding:32px">
+    <p style="color:#555;margin:0 0 16px">Dear <strong>${name || 'Member'}</strong>,</p>
+    <p style="color:#555;margin:0 0 20px">Your profile has been updated by our admin team. Here are the changes made:</p>
+    <table width="100%" cellpadding="10" style="border:1px solid #F2E9DE;border-radius:12px;margin-bottom:24px;border-collapse:collapse">
+      <tr style="background:#FBF6ED"><td style="font-weight:bold;color:#2D2424;font-size:13px;text-transform:uppercase">Field</td><td style="font-weight:bold;color:#2D2424;font-size:13px;text-transform:uppercase">New Value</td></tr>
+      ${changes.map(([field, val]) => `<tr><td style="color:#888;font-size:13px;border-top:1px solid #F2E9DE;text-transform:capitalize">${field.replace(/([A-Z])/g, ' $1').trim()}</td><td style="color:#2D2424;font-size:13px;border-top:1px solid #F2E9DE">${val}</td></tr>`).join('')}
+    </table>
+    <p style="color:#888;font-size:12px;margin:0 0 24px">If you believe these changes are incorrect, please contact our support team.</p>
+    <div style="text-align:center"><a href="${SITE_URL}/profile/edit" style="display:inline-block;padding:14px 36px;background:linear-gradient(135deg,#E3B450,#CAA043);color:#2D2424;font-weight:bold;text-decoration:none;border-radius:8px;font-size:15px">View My Profile</a></div>
+  </td></tr>
+  <tr><td style="background:#FBF6ED;padding:20px;text-align:center;border-top:1px solid #F2E9DE">
+    <p style="margin:0;color:#aaa;font-size:11px">RVR Luxury Matrimony · Admin Team</p>
+  </td></tr>
+</table></td></tr></table></body></html>`;
+
+exports.editUserProfile = async (req, res) => {
+    try {
+        const { id } = req.params; // userId
+        const updates = req.body;
+
+        const user = await User.findById(id).select('-password -otp');
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+        const profile = await Profile.findOne({ userId: id });
+        if (!profile) return res.status(404).json({ success: false, message: 'Profile not found for this user' });
+
+        // Filter to only allowed fields
+        const profileUpdates = {};
+        const changedFields = [];
+        ADMIN_EDITABLE_PROFILE_FIELDS.forEach((field) => {
+            if (Object.prototype.hasOwnProperty.call(updates, field) && updates[field] !== undefined) {
+                profileUpdates[field] = updates[field];
+                changedFields.push([field, String(updates[field]).substring(0, 80)]);
+            }
+        });
+
+        if (Object.keys(profileUpdates).length === 0) {
+            return res.status(400).json({ success: false, message: 'No valid fields to update' });
+        }
+
+        const prevValues = {};
+        changedFields.forEach(([f]) => { prevValues[f] = profile[f]; });
+
+        Object.assign(profile, profileUpdates);
+        await profile.save();
+
+        // Send email notification
+        if (user.email && changedFields.length > 0) {
+            try {
+                await transporter.sendMail({
+                    from: FROM,
+                    to: user.email,
+                    subject: 'Your RVR Matrimony profile has been updated',
+                    html: buildAdminEditEmail(profile.fullName, user.email, changedFields, req.user?.name || 'Admin'),
+                });
+            } catch (emailErr) { console.error('Admin edit email error:', emailErr.message); }
+        }
+
+        await createAuditLog({
+            req,
+            action: 'admin_edit_profile',
+            targetType: 'Profile',
+            targetId: profile._id,
+            targetName: profile.fullName || user.email,
+            changedFields: Object.fromEntries(changedFields.map(([f]) => [f, true])),
+            previousValues: prevValues,
+            newValues: profileUpdates,
+            notes: `Admin directly edited ${changedFields.length} field(s)`,
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: `Profile updated. ${user.email ? 'Email notification sent.' : 'No email on file.'}`,
+            data: profile,
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// ===================== REQUEST USER TO EDIT SENSITIVE FIELDS =====================
+const buildRequestEditEmail = (name, field, remarks, adminName) => `
+<!DOCTYPE html><html><body style="margin:0;padding:0;background:#FBF6ED;font-family:Georgia,serif">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
+<table width="520" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)">
+  <tr><td style="background:linear-gradient(135deg,#8B6914,#E3B450);padding:28px 32px;text-align:center">
+    <p style="margin:0;color:#2D2424;font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:.8">RVR Luxury Matrimony</p>
+    <h1 style="margin:8px 0 0;color:#2D2424;font-size:22px">Action Required on Your Profile</h1>
+  </td></tr>
+  <tr><td style="padding:32px">
+    <p style="color:#555;margin:0 0 16px">Dear <strong>${name || 'Member'}</strong>,</p>
+    <p style="color:#555;margin:0 0 16px">Our admin team has requested you to update your <strong>${field}</strong> on your profile.</p>
+    <div style="background:#FBF6ED;border-left:4px solid #E3B450;border-radius:8px;padding:16px;margin-bottom:24px">
+      <p style="margin:0;color:#2D2424;font-size:13px;font-weight:bold">Admin Notes:</p>
+      <p style="margin:6px 0 0;color:#555;font-size:14px">${remarks || 'Please update this information at your earliest convenience.'}</p>
+    </div>
+    <p style="color:#555;margin:0 0 24px">Please log in and update your profile. If you have questions, contact support.</p>
+    <div style="text-align:center"><a href="${SITE_URL}/profile/edit" style="display:inline-block;padding:14px 36px;background:linear-gradient(135deg,#E3B450,#CAA043);color:#2D2424;font-weight:bold;text-decoration:none;border-radius:8px;font-size:15px">Update My Profile</a></div>
+  </td></tr>
+  <tr><td style="background:#FBF6ED;padding:20px;text-align:center;border-top:1px solid #F2E9DE">
+    <p style="margin:0;color:#aaa;font-size:11px">RVR Luxury Matrimony · Admin Team</p>
+  </td></tr>
+</table></td></tr></table></body></html>`;
+
+exports.requestUserEdit = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { field, remarks } = req.body;
+
+        if (!field) return res.status(400).json({ success: false, message: 'Field name is required' });
+
+        const user = await User.findById(id).select('-password -otp');
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+        const profile = await Profile.findOne({ userId: id });
+        const name = profile?.fullName || user.email || 'Member';
+
+        if (!user.email) {
+            return res.status(400).json({ success: false, message: 'User has no email address on file' });
+        }
+
+        await transporter.sendMail({
+            from: FROM,
+            to: user.email,
+            subject: `Action Required: Please update your ${field} on RVR Matrimony`,
+            html: buildRequestEditEmail(name, field, remarks, req.user?.name || 'Admin'),
+        });
+
+        await createAuditLog({
+            req,
+            action: 'request_user_edit',
+            targetType: 'User',
+            targetId: id,
+            targetName: user.email,
+            changedFields: { [field]: true },
+            previousValues: {},
+            newValues: { requestedField: field, remarks },
+            notes: `Admin requested user to edit: ${field}`,
+        });
+
+        return res.status(200).json({ success: true, message: `Edit request email sent to ${user.email}` });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// ===================== BAN / UNBAN USER (with email notification) =====================
+const buildBanEmail = (name, reason) => `
+<!DOCTYPE html><html><body style="margin:0;padding:0;background:#FBF6ED;font-family:Georgia,serif">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
+<table width="520" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)">
+  <tr><td style="background:linear-gradient(135deg,#7f1d1d,#c0392b);padding:28px 32px;text-align:center">
+    <p style="margin:0;color:#fff;font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:.8">RVR Luxury Matrimony</p>
+    <h1 style="margin:8px 0 0;color:#fff;font-size:22px">Account Suspended</h1>
+  </td></tr>
+  <tr><td style="padding:32px">
+    <p style="color:#555;margin:0 0 16px">Dear <strong>${name || 'Member'}</strong>,</p>
+    <p style="color:#555;margin:0 0 16px">Your RVR Luxury Matrimony account has been <strong style="color:#c0392b">suspended</strong> by our admin team.</p>
+    ${reason ? `<div style="background:#FFF5F5;border-left:4px solid #c0392b;border-radius:8px;padding:16px;margin-bottom:20px"><p style="margin:0;color:#c0392b;font-size:13px"><strong>Reason:</strong> ${reason}</p></div>` : ''}
+    <p style="color:#888;font-size:13px;margin:0 0 24px">If you believe this is a mistake, please contact our support team immediately.</p>
+    <div style="text-align:center"><a href="mailto:${process.env.EMAIL_USER || 'support@rvrluxury.com'}" style="display:inline-block;padding:14px 36px;background:linear-gradient(135deg,#E3B450,#CAA043);color:#2D2424;font-weight:bold;text-decoration:none;border-radius:8px;font-size:15px">Contact Support</a></div>
+  </td></tr>
+</table></td></tr></table></body></html>`;
+
+exports.banUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { reason, action } = req.body; // action: 'ban' | 'unban'
+
+        const isBanning = action !== 'unban';
+        const newStatus = isBanning ? 'suspended' : 'active';
+
+        const user = await User.findByIdAndUpdate(id, { accountStatus: newStatus }, { new: true }).select('-password -otp');
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+        const profile = await Profile.findOne({ userId: id });
+
+        if (isBanning && user.email) {
+            try {
+                await transporter.sendMail({
+                    from: FROM,
+                    to: user.email,
+                    subject: 'Your RVR Matrimony account has been suspended',
+                    html: buildBanEmail(profile?.fullName || user.email, reason),
+                });
+            } catch (emailErr) { console.error('Ban email error:', emailErr.message); }
+        }
+
+        await createAuditLog({
+            req,
+            action: isBanning ? 'ban_user' : 'unban_user',
+            targetType: 'User',
+            targetId: id,
+            targetName: user.email || '',
+            changedFields: { accountStatus: true },
+            previousValues: { accountStatus: isBanning ? 'active' : 'suspended' },
+            newValues: { accountStatus: newStatus },
+            notes: isBanning ? `Banned. Reason: ${reason || 'N/A'}` : 'Account reactivated',
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: isBanning ? 'User banned and notified by email.' : 'User account reactivated.',
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// ===================== DELETE USER (Hard Delete) =====================
+exports.deleteUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const user = await User.findById(id).select('-password -otp');
+        if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+        const profile = await Profile.findOne({ userId: id });
+        const name = profile?.fullName || user.email || 'Member';
+        const email = user.email;
+
+        // Hard delete profile + user
+        if (profile) await Profile.findByIdAndDelete(profile._id);
+        await User.findByIdAndDelete(id);
+
+        // Send farewell email
+        if (email) {
+            try {
+                await transporter.sendMail({
+                    from: FROM,
+                    to: email,
+                    subject: 'Your RVR Matrimony account has been deleted',
+                    html: `<div style="font-family:Georgia,serif;max-width:520px;margin:auto;padding:32px;background:#FBF6ED;border-radius:16px;text-align:center">
+                      <h2 style="color:#2D2424">Account Deleted</h2>
+                      <p style="color:#555">Dear ${name},</p>
+                      <p style="color:#555">Your RVR Luxury Matrimony account and all associated data have been permanently deleted by our admin team.</p>
+                      <p style="color:#888;font-size:12px;margin-top:24px">If this was a mistake, please contact our support team immediately.</p>
+                    </div>`,
+                });
+            } catch (emailErr) { console.error('Delete user email error:', emailErr.message); }
+        }
+
+        await createAuditLog({
+            req,
+            action: 'delete_user',
+            targetType: 'User',
+            targetId: id,
+            targetName: email || name,
+            changedFields: {},
+            previousValues: {},
+            newValues: {},
+            notes: `User hard-deleted. Name: ${name}, Email: ${email}`,
+        });
+
+        return res.status(200).json({ success: true, message: 'User and profile permanently deleted.' });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};

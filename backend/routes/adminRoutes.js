@@ -28,6 +28,10 @@ const {
     deleteAdminAccount,
     getAuditLogs,
     resetUserPassword,
+    editUserProfile,
+    requestUserEdit,
+    banUser,
+    deleteUser,
 } = require('../controllers/adminController');
 
 const {
@@ -69,6 +73,10 @@ router.post('/users/manual', adminProtect, createUserManually);
 router.post('/users/bulk-upload', adminProtect, upload.single('file'), bulkCreateUsersFromExcel);
 router.post('/users/:id/reset-password', adminProtect, requireSuperAdmin, resetUserPassword);
 router.put('/users/:id/account-status', adminProtect, updateUserAccountStatus);
+router.put('/users/:id/edit-profile', adminProtect, editUserProfile);
+router.post('/users/:id/request-edit', adminProtect, requestUserEdit);
+router.post('/users/:id/ban', adminProtect, banUser);
+router.delete('/users/:id', adminProtect, requireSuperAdmin, deleteUser);
 
 // user-details: specific before parameterized
 router.get('/user-details/profile/:profileId', adminProtect, getUserDetailsByProfileId);

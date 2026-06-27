@@ -80,7 +80,7 @@ exports.listCoupons = async (req, res) => {
 
 exports.createCoupon = async (req, res) => {
     try {
-        const coupon = await Coupon.create({ ...req.body, createdBy: req.admin._id });
+        const coupon = await Coupon.create({ ...req.body, createdBy: req.user._id });
         return res.status(201).json({ success: true, data: coupon, message: 'Coupon created' });
     } catch (error) {
         if (error.code === 11000) return res.status(400).json({ success: false, message: 'Coupon code already exists' });

@@ -1,28 +1,33 @@
 const nodemailer = require('nodemailer');
 
+const EMAIL_HOST = process.env.EMAIL_HOST;
+const EMAIL_PORT = parseInt(process.env.EMAIL_PORT, 10) || 587;
+const EMAIL_USER = process.env.EMAIL_USER;
+const EMAIL_PASS = process.env.EMAIL_PASS;
+
+if (!EMAIL_HOST || !EMAIL_USER || !EMAIL_PASS) {
+  console.warn('⚠️  Email not fully configured. Set EMAIL_HOST, EMAIL_USER, EMAIL_PASS in .env');
+}
+
 const transporter = nodemailer.createTransport({
-    // process.env se value lo, agar na mile toh hardcoded string use karo (sirf debugging ke liye)
-    host: process.env.EMAIL_HOST || "mail.softwaregiant.in", 
-    port: process.env.EMAIL_PORT || 587,
-    secure: false, 
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    },
-    tls: {
-        rejectUnauthorized: false 
-    }
+  host: EMAIL_HOST || 'smtp.gmail.com',
+  port: EMAIL_PORT,
+  secure: EMAIL_PORT === 465, // true for 465, false for 587/TLS
+  auth: {
+    user: EMAIL_USER,
+    pass: EMAIL_PASS,
+  },
+  tls: {
+    rejectUnauthorized: false,
+  },
 });
 
-// Yeh debug line aapko terminal mein batayegi ki kaunsa host use ho raha hai
-console.log("Attempting to connect to Email Host:", process.env.EMAIL_HOST);
-
-transporter.verify((error, success) => {
-    if (error) {
-        console.log("Email Config Error:", error);
-    } else {
-        console.log("Email Server is ready to take our messages");
-    }
+transporter.verify((error) => {
+  if (error) {
+    console.error('Email Config Error:', error.message);
+  } else {
+    console.log(`✅ Email ready — ${EMAIL_USER} via ${EMAIL_HOST}:${EMAIL_PORT}`);
+  }
 });
 
 module.exports = transporter;

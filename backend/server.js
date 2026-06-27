@@ -37,10 +37,17 @@ const allowedOrigins = (process.env.FRONTEND_URLS || '')
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.length === 0) return callback(null, true);
+      // Allow non-browser requests (curl, postman, server-to-server)
+      if (!origin) return callback(null, true);
+      // Allow all if FRONTEND_URLS not configured
+      if (allowedOrigins.length === 0) return callback(null, true);
+      // Allow whitelisted origins
       if (allowedOrigins.includes(origin)) return callback(null, true);
+      // Allow any localhost port (dev convenience)
+      if (/^http:\/\/localhost(:\d+)?$/.test(origin)) return callback(null, true);
       return callback(new Error('Not allowed by CORS'));
-    }
+    },
+    credentials: true,
   })
 );
 app.use(express.json());

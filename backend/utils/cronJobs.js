@@ -159,3 +159,66 @@ cron.schedule('0 0 * * *', async () => {
 cron.schedule('0 8 * * *', async () => {
     await sendRenewalReminders();
 });
+
+// ─────────────────────────────────────────────
+// Job 3: Price-drop alert emails
+// Called manually by admin API (not on a cron)
+// ─────────────────────────────────────────────
+const buildPriceDropEmail = (name, plan, oldPrice, newPrice, savings) => `
+<!DOCTYPE html><html><body style="margin:0;padding:0;background:#FBF6ED;font-family:Georgia,serif">
+<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
+<table width="520" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)">
+  <tr><td style="background:linear-gradient(135deg,#27ae60,#1a5c2a);padding:28px 32px;text-align:center">
+    <p style="margin:0;color:#fff;font-size:11px;letter-spacing:3px;text-transform:uppercase;opacity:.8">RVR Luxury Matrimony</p>
+    <h1 style="margin:8px 0 0;color:#fff;font-size:22px">Price Drop Alert!</h1>
+  </td></tr>
+  <tr><td style="padding:32px">
+    <p style="color:#555;margin:0 0 16px">Dear <strong>${name || 'Member'}</strong>,</p>
+    <p style="color:#555;margin:0 0 24px">Great news! The <strong>${plan}</strong> plan has a new discounted price — and you qualify to upgrade now.</p>
+    <div style="display:flex;gap:16px;margin-bottom:24px;text-align:center">
+      <div style="flex:1;background:#FFF5F5;border-radius:12px;padding:16px">
+        <p style="margin:0 0 4px;color:#888;font-size:11px">Was</p>
+        <p style="margin:0;font-size:22px;font-weight:bold;color:#C0392B;text-decoration:line-through">₹${oldPrice}</p>
+      </div>
+      <div style="flex:1;background:#F0FFF4;border-radius:12px;padding:16px">
+        <p style="margin:0 0 4px;color:#888;font-size:11px">Now</p>
+        <p style="margin:0;font-size:22px;font-weight:bold;color:#27ae60">₹${newPrice}</p>
+      </div>
+    </div>
+    <p style="color:#27ae60;font-weight:bold;text-align:center;margin-bottom:24px">You save ₹${savings}!</p>
+    <div style="text-align:center">
+      <a href="${SITE_URL}/profile/membership" style="display:inline-block;padding:14px 36px;background:linear-gradient(135deg,#E3B450,#CAA043);color:#2D2424;font-weight:bold;text-decoration:none;border-radius:8px;font-size:15px">Upgrade at New Price</a>
+    </div>
+  </td></tr>
+</table></td></tr></table></body></html>`;
+
+exports.sendPriceDropAlerts = async ({ plan, oldPrice, newPrice }) => {
+    if (process.env.PRICE_DROP_ALERTS_ENABLED !== 'true') {
+        console.log('Price-drop alerts are disabled (PRICE_DROP_ALERTS_ENABLED != true)');
+        return;
+    }
+    const savings = oldPrice - newPrice;
+    const freeProfiles = await Profile.find({
+        membershipType: 'Free',
+        adminStatus: 'approved',
+    }).select('userId fullName').limit(1000);
+
+    let sent = 0;
+    for (const profile of freeProfiles) {
+        try {
+            const user = await User.findById(profile.userId).select('email');
+            if (!user?.email) continue;
+            await transporter.sendMail({
+                from: FROM,
+                to: user.email,
+                subject: `Price Drop! ${plan} plan is now ₹${newPrice} on RVR Matrimony`,
+                html: buildPriceDropEmail(profile.fullName, plan, oldPrice, newPrice, savings),
+            });
+            sent++;
+        } catch (e) {
+            console.error('Price drop email error:', e.message);
+        }
+    }
+    console.log(`Price-drop alerts sent: ${sent}`);
+    return sent;
+};

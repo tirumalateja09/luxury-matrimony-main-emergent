@@ -776,12 +776,50 @@ exports.getRevenueAnalytics = async (req, res) => {
     }
 };
 
-// ===================== EXPORT USERS =====================
+// ===================== EXPORT USERS (with filters) =====================
 exports.exportUsers = async (req, res) => {
     try {
         const format = req.query.format || 'csv';
-        const users = await User.find({}).select('-otp -otpExpires -password').lean();
-        const profilesList = await Profile.find({}).lean();
+        let userQuery = {};
+        const profileFilters = {};
+
+        // Apply same filters as getAllUsers
+        if (req.query.status) userQuery.accountStatus = req.query.status;
+        if (req.query.membershipType) profileFilters.membershipType = req.query.membershipType;
+        if (req.query.gender) profileFilters.gender = req.query.gender;
+        if (req.query.approveStatus) profileFilters.adminStatus = req.query.approveStatus;
+        if (req.query.religion) profileFilters.religion = new RegExp(`^${req.query.religion}$`, 'i');
+        if (req.query.state) profileFilters.state = new RegExp(`^${req.query.state}$`, 'i');
+        if (req.query.city) profileFilters.city = new RegExp(`^${req.query.city}$`, 'i');
+        if (req.query.education) profileFilters.highestEducation = new RegExp(`^${req.query.education}$`, 'i');
+        if (req.query.minAge || req.query.maxAge) {
+            const today = new Date();
+            const minAge = parseInt(req.query.minAge) || 18;
+            const maxAge = parseInt(req.query.maxAge) || 80;
+            profileFilters.dob = {
+                $gte: new Date(today.getFullYear() - maxAge, today.getMonth(), today.getDate()),
+                $lte: new Date(today.getFullYear() - minAge, today.getMonth(), today.getDate()),
+            };
+        }
+        if (req.query.dateFrom || req.query.dateTo) {
+            userQuery.createdAt = {};
+            if (req.query.dateFrom) userQuery.createdAt.$gte = new Date(req.query.dateFrom);
+            if (req.query.dateTo) userQuery.createdAt.$lte = new Date(req.query.dateTo + 'T23:59:59Z');
+        }
+
+        if (Object.keys(profileFilters).length > 0) {
+            const fp = await Profile.find(profileFilters).select('userId');
+            const ids = fp.map((p) => p.userId);
+            if (ids.length === 0) {
+                return res.status(200).send('No records found for the given filters');
+            }
+            userQuery._id = { $in: ids };
+        }
+
+        const users = await User.find(userQuery).select('-otp -otpExpires -password').lean();
+        const profilesList = await Profile.find(
+            Object.keys(profileFilters).length > 0 ? { userId: userQuery._id } : {}
+        ).lean();
         const profilesMap = {};
         profilesList.forEach((p) => { profilesMap[p.userId.toString()] = p; });
 
@@ -792,23 +830,26 @@ exports.exportUsers = async (req, res) => {
                 Email: u.email || '',
                 Phone: u.phone || '',
                 Gender: p.gender || '',
+                Age: p.dob ? Math.floor((Date.now() - new Date(p.dob)) / 31536000000) : '',
+                Religion: p.religion || '',
+                Community: p.community || '',
                 Membership: p.membershipType || 'Free',
                 'Account Status': u.accountStatus || '',
                 'Approval Status': p.adminStatus || '',
+                Education: p.highestEducation || '',
                 City: p.city || '',
                 State: p.state || '',
-                Registered: u.createdAt ? new Date(u.createdAt).toISOString() : '',
+                Registered: u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-IN') : '',
             };
         });
 
+        const headers = Object.keys(rows[0] || {});
         if (format === 'csv') {
-            const headers = Object.keys(rows[0] || { Name: '', Email: '', Phone: '', Gender: '', Membership: '', 'Account Status': '', 'Approval Status': '', City: '', State: '', Registered: '' });
-            const csvLines = [headers.join(',')];
-            rows.forEach((row) => {
-                csvLines.push(headers.map((h) => `"${String(row[h] || '').replace(/"/g, '""')}"`).join(','));
-            });
+            const csvLines = [headers.join(','), ...rows.map((row) =>
+                headers.map((h) => `"${String(row[h] ?? '').replace(/"/g, '""')}"`).join(',')
+            )];
             res.setHeader('Content-Type', 'text/csv');
-            res.setHeader('Content-Disposition', 'attachment; filename=users_export.csv');
+            res.setHeader('Content-Disposition', `attachment; filename=users_export_${Date.now()}.csv`);
             return res.send(csvLines.join('\n'));
         } else if (format === 'xlsx') {
             const ws = XLSX.utils.json_to_sheet(rows);
@@ -816,20 +857,14 @@ exports.exportUsers = async (req, res) => {
             XLSX.utils.book_append_sheet(wb, ws, 'Users');
             const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
             res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-            res.setHeader('Content-Disposition', 'attachment; filename=users_export.xlsx');
+            res.setHeader('Content-Disposition', `attachment; filename=users_export_${Date.now()}.xlsx`);
             return res.send(buffer);
-        } else if (format === 'pdf') {
-            // Simple HTML-to-text style PDF simulation using plain text
-            const lines = ['RVR Luxury Matrimony - Users Export', '', 'Name,Email,Phone,Gender,Membership,Account Status,Approval Status,City,State,Registered'];
-            rows.forEach((row) => {
-                lines.push(Object.values(row).join(','));
-            });
+        } else {
+            const lines = ['RVR Luxury Matrimony - Users Export', '', headers.join(','), ...rows.map((row) => Object.values(row).join(','))];
             res.setHeader('Content-Type', 'text/plain');
-            res.setHeader('Content-Disposition', 'attachment; filename=users_export.txt');
+            res.setHeader('Content-Disposition', `attachment; filename=users_export_${Date.now()}.txt`);
             return res.send(lines.join('\n'));
         }
-
-        return res.status(400).json({ success: false, message: 'Invalid format. Use csv, xlsx, or pdf' });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
     }

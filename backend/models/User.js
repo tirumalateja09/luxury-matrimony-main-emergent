@@ -56,9 +56,11 @@ const userSchema = new mongoose.Schema({
 accountStatus: { 
   type: String, 
   enum: ['pending', 'active', 'suspended', 'deleted'], 
-  default: 'pending' // Account starts as pending
+  default: 'pending'
 },
-  isVerified: { type: Boolean, default: false }
+  isVerified: { type: Boolean, default: false },
+  lastLoginIP: { type: String, default: '' },
+  loginHistory: [{ ip: String, loginAt: { type: Date, default: Date.now } }],
 }, { timestamps: true });
 
 // Validation: Ensure at least one contact method is provided before saving

@@ -894,9 +894,39 @@ exports.loginWithPassword = async (req, res) => {
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Invalid credentials." });
+      return res.status(401).json({ success: false, message: "Invalid credentials." });
+    }
+
+    // P2: Login alert email for new IP
+    const currentIP = req.ip || req.headers['x-forwarded-for']?.split(',')[0]?.trim() || '';
+    const isNewDevice = user.lastLoginIP && user.lastLoginIP !== currentIP;
+
+    // Update login history
+    user.lastLoginIP = currentIP;
+    user.loginHistory = [...(user.loginHistory || []).slice(-9), { ip: currentIP }];
+    await user.save();
+
+    if (isNewDevice) {
+      try {
+        const transporter = require('../utils/emailConfig');
+        const FROM = `"RVR Luxury Matrimony" <${process.env.EMAIL_USER}>`;
+        await transporter.sendMail({
+          from: FROM,
+          to: user.email,
+          subject: 'New login to your RVR Matrimony account',
+          html: `<div style="font-family:Georgia,serif;max-width:520px;margin:auto;padding:32px;background:#FBF6ED;border-radius:16px">
+            <h2 style="color:#2D2424">New Login Detected</h2>
+            <p style="color:#555">A new login to your account was detected from a different IP address.</p>
+            <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:12px;padding:16px;margin:20px 0;border:1px solid #F2E9DE">
+              <tr><td style="padding:8px;color:#888;font-size:12px">IP Address</td><td style="padding:8px;font-size:13px;color:#2D2424">${currentIP}</td></tr>
+              <tr><td style="padding:8px;color:#888;font-size:12px">Time</td><td style="padding:8px;font-size:13px;color:#2D2424">${new Date().toLocaleString('en-IN')}</td></tr>
+            </table>
+            <p style="color:#C0392B;font-size:13px">If this was not you, please change your password immediately.</p>
+          </div>`,
+        });
+      } catch (emailErr) {
+        console.error('Login alert email error:', emailErr.message);
+      }
     }
 
     const token = generateToken(user._id);

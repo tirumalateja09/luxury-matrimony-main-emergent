@@ -5,7 +5,7 @@ import Image from "next/image";
 import {
   LayoutDashboard, Users, CheckCircle2, Heart, AlertTriangle,
   Bell, MessageSquareText, Images, UserPlus, Crown, TrendingUp,
-  Settings, ShieldCheck, LogOut, ChevronRight, UserCog, ScrollText,
+  Settings, ShieldCheck, LogOut, ChevronRight, UserCog, ScrollText, Store, Tag,
 } from "lucide-react";
 
 const navItemBase =
@@ -85,6 +85,8 @@ export default function AdminSidebar({ isOpen, onClose }) {
         <NavItem href="/admin/pending-verification" icon={CheckCircle2} label="KYC Verification" active={isActive("/admin/pending-verification")} isSuperAdmin={isSuperAdmin} />
         <NavItem href="/admin/matches" icon={Heart} label="Successful Matches" active={isActive("/admin/matches")} isSuperAdmin={isSuperAdmin} />
         <NavItem href="/admin/reported-profiles" icon={AlertTriangle} label="Reported Profiles" active={isActive("/admin/reported-profiles")} isSuperAdmin={isSuperAdmin} />
+        <NavItem href="/admin/wedding-services" icon={Store} label="Wedding Services" active={isActive("/admin/wedding-services")} isSuperAdmin={isSuperAdmin} />
+        <NavItem href="/admin/coupons" icon={Tag} label="Coupons" active={isActive("/admin/coupons")} superAdminOnly isSuperAdmin={isSuperAdmin} />
         <NavItem href="/admin/notifications" icon={Bell} label="Notifications" active={isActive("/admin/notifications")} isSuperAdmin={isSuperAdmin} />
 
         {/* Super Admin sections */}

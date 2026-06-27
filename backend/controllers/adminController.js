@@ -845,12 +845,15 @@ exports.exportUsers = async (req, res) => {
 
         const headers = Object.keys(rows[0] || {});
         if (format === 'csv') {
+            if (rows.length === 0) return res.status(200).send('No records found');
             const csvLines = [headers.join(','), ...rows.map((row) =>
                 headers.map((h) => `"${String(row[h] ?? '').replace(/"/g, '""')}"`).join(',')
             )];
             res.setHeader('Content-Type', 'text/csv');
             res.setHeader('Content-Disposition', `attachment; filename=users_export_${Date.now()}.csv`);
             return res.send(csvLines.join('\n'));
+        } else if (format === 'json') {
+            return res.status(200).json({ success: true, data: rows, total: rows.length });
         } else if (format === 'xlsx') {
             const ws = XLSX.utils.json_to_sheet(rows);
             const wb = XLSX.utils.book_new();

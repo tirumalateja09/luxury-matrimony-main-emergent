@@ -18,6 +18,7 @@ import {
 import Image from "next/image";
 import DashboardStats from "@/app/component/Admin/DashboardStats";
 import CustomSelect from "@/app/component/Register/CustomSelect";
+import ExportPanel from "@/app/component/Admin/ExportPanel";
 import { useAdminContext } from "@/context/AdminContext";
 
 const ACCOUNT_STATUS_OPTIONS = ["pending", "active", "suspended", "deleted"];
@@ -579,6 +580,9 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Export Users Panel */}
+      {isSuperAdmin && <ExportPanel token={token} />}
 
       {isFilterDrawerOpen ? (
         <div className="fixed inset-0 z-[998]">
